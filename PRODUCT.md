@@ -1,52 +1,34 @@
-# bookchaowalit-notes-app-frontend — Product brief
+# Field Notebook (notes app) — Product truth
 
-**Slug:** `bookchaowalit-website/bookchaowalit-notes-app-frontend`  
-**Generated:** 2026-08-11 (bulk Book Dev closeout)  
-**Status:** starter / portfolio boundary
+> Inferred from the code and copy (no user interview). Checked against the portfolio card claims review
+> (`portfolio-site-web/docs/audits/CARD-CLAIMS-REVIEW-2026-10.md`, row `notes-app`) on 2026-10-23.
 
-## Purpose
+## What it is
 
-Portfolio repository under Book Dev. This brief records ownership and the
-current honest status so the nested tree is not an empty shell in the task
-system.
+A client-only plain-text notebook: a list of notes with search and one open note (title plus body), kept in this browser's localStorage.
 
-## Current product truth
+## Who it is for
 
-This is a single-browser notebook for creating, searching, editing, selecting,
-and deleting short notes. Notes live in localStorage on the current origin;
-there is no account, sync, collaboration, markdown parser, or remote backup.
+A portfolio visitor who wants a quiet scratch notebook in one browser.
 
-## Runnable path
+## What works today
 
-See `README.md` for install and run instructions when present.
+1. New leaf adds an untitled note on top and opens it; typing in the title or body saves at once and moves the note to the top (newest first).
+2. Search title and body (case-insensitive). The newest note opens by default, also after a reload or a delete.
+3. Remove the open note. Notes survive a reload; a saved value of the wrong shape is ignored, bad entries are dropped.
+4. `/api/mcp` answers JSON-RPC `initialize` and `tools/list` with an empty tool list: notes stay in the visitor's browser, so any `tools/call` is refused with an error.
+5. Front-end and server errors go to Sentry (errors only, personal data stripped) when `NEXT_PUBLIC_SENTRY_DSN` is set.
 
-## Limits
+## What does not work (and must not be claimed)
 
-- Not claimed as production-ready unless README and tests prove it.
-- Mobile smoke / emulator acceptance is separate and toolchain-dependent.
+- No markdown or MDX, tags, pinned notes, offline mode beyond localStorage, or export to the blog pipeline (removed from the portfolio card in the 2026-10 review).
+- No account or sync: notes stay in one browser on one device; clearing site data deletes them.
 
-## Source README excerpt
+## Live URL and deploy state
 
-```
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+- Live: https://notes-app.bookchaowalit.com (HTTP 200 on 2026-10-23).
+- The Vercel project `bookchaowalit-notes-app-frontend` is deployed only by CLI. Its last production deploy is the CVE patch (2026-10-23, CLI, commit 33672a8). Its Git link names the old repository `bookchaowalit/bookchaowalit-notes-app-frontend`, so a push to `main` does not deploy: the L2 work stays undeployed until the owner reconnects Vercel Git to this repository (owner action D9). `NEXT_PUBLIC_SENTRY_DSN` is already set on the Vercel project (Sentry project `productivity-notes-app-web`, org `personal-yu0`).
 
-## Getting Started
+## Boundaries
 
-First, run the development server:
-
-```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
-```
-
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
-
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
-
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize an
-```
+- Browser-only apart from the stateless `/api/mcp` route.

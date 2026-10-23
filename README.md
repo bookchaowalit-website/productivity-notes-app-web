@@ -1,28 +1,36 @@
-# Notes App
+# Field Notebook (notes app)
 
-Simple notes app with search and local persistence.
+A plain-text notebook kept in this browser: make a leaf, write, search, remove. Newest first; nothing leaves the browser.
 
-## Features
-- Create / update / delete notes
-- Search by title or body
-- Autosave to localStorage
+Live: https://notes-app.bookchaowalit.com (deployed by Vercel CLI; it can lag `main`, see `PRODUCT.md`).
 
-## Limitations
-- No folders or rich editor
-- Single device only
+## What it does not do
 
-## Stack
-- Next.js App Router
-- TypeScript
-- Tailwind CSS
-- localStorage persistence
+- No markdown, tags, pinning, export, account or sync.
 
 ## Run
+
 ```bash
-npm install
+npm ci
 npm run dev
 ```
 
-## Honesty notes
-- Portfolio mini-app showcase
-- Not multi-tenant SaaS
+## Checks
+
+```bash
+npm test           # Vitest: note list and edit rules, saved-data parsing, local store, MCP route, home page render, Sentry scrubbing
+npm run lint
+npm run typecheck
+npm run build
+```
+
+CI (`.github/workflows/ci.yml`) runs the shared Node workflow (with a line-coverage gate) and the shared security
+scan on every push and PR to `main`.
+
+## Code map
+
+- `lib/notes.ts`: sorting, search, active-note fallback, leaf numbering, edits, saved-data parsing and the localStorage store.
+- `lib/local-store.ts`: small localStorage store for `useSyncExternalStore` (hydration-safe, works when storage is blocked).
+- `app/api/mcp/route.ts`: stateless JSON-RPC endpoint; `initialize` and an empty `tools/list`, every call refused.
+- `lib/sentry.ts` + `instrumentation*.ts`: error reporting to Sentry, errors only, personal data stripped; off when `NEXT_PUBLIC_SENTRY_DSN` is unset.
+- `app/more-projects/page.tsx`: shared portfolio link page (copied per repository, not a package).
