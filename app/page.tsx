@@ -1,56 +1,33 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useState, useSyncExternalStore } from "react";
+import { createNote, dateLabel, noteCount, deleteNote, filterNotes, leafNumber, noteStore, pickActive, updateNote, type Note } from "@/lib/notes";
 
-type Note = { id: string; title: string; body: string; updatedAt: number };
-
-function useLocalStorage<T>(key: string, initial: T) {
-  const [value, setValue] = useState(initial);
-  const [ready, setReady] = useState(false);
-  useEffect(() => {
-    try {
-      const raw = localStorage.getItem(key);
-      if (raw) setValue(JSON.parse(raw) as T);
-    } catch { /* keep the seeded notebook */ }
-    setReady(true);
-  }, [key]);
-  useEffect(() => {
-    if (ready) localStorage.setItem(key, JSON.stringify(value));
-  }, [key, ready, value]);
-  return [value, setValue, ready] as const;
-}
-
-function dateLabel(timestamp: number) {
-  return timestamp ? new Date(timestamp).toLocaleDateString(undefined, { month: "short", day: "numeric" }) : "NEW LEAF";
-}
+const noop = () => () => {};
 
 export default function Home() {
-  const [notes, setNotes, ready] = useLocalStorage<Note[]>("notes-app-v1", [{ id: "1", title: "Welcome", body: "This note lives in localStorage.\n\nMake a new leaf when the thought arrives.", updatedAt: 0 }]);
-  const [activeId, setActiveId] = useState("1");
+  const notes = useSyncExternalStore(noteStore.subscribe, noteStore.getSnapshot, noteStore.getServerSnapshot);
+  const ready = useSyncExternalStore(noop, () => true, () => false);
+  const [activeId, setActiveId] = useState("");
   const [query, setQuery] = useState("");
-  const active = notes.find((note) => note.id === activeId) ?? null;
-  const filtered = useMemo(() => notes.filter((note) => `${note.title} ${note.body}`.toLowerCase().includes(query.toLowerCase())).sort((a, b) => b.updatedAt - a.updatedAt), [notes, query]);
+  const active = pickActive(notes, activeId);
+  const filtered = filterNotes(notes, query);
 
-  useEffect(() => {
-    if (!active && notes[0]) setActiveId(notes[0].id);
-  }, [active, notes]);
-
-  const updateActive = (changes: Partial<Note>) => {
+  const updateActive = (changes: Partial<Pick<Note, "title" | "body">>) => {
     if (!active) return;
-    setNotes((current) => current.map((note) => note.id === active.id ? { ...note, ...changes, updatedAt: Date.now() } : note));
+    noteStore.update((current) => updateNote(current, active.id, changes, Date.now()));
   };
 
-  const createNote = () => {
+  const newLeaf = () => {
     const id = crypto.randomUUID();
-    setNotes((current) => [{ id, title: "Untitled note", body: "", updatedAt: Date.now() }, ...current]);
+    noteStore.update((current) => createNote(current, id, Date.now()));
     setActiveId(id);
   };
 
   const deleteActive = () => {
     if (!active) return;
-    const remaining = notes.filter((note) => note.id !== active.id);
-    setNotes(remaining);
-    setActiveId(remaining[0]?.id ?? "");
+    noteStore.update((current) => deleteNote(current, active.id));
+    setActiveId("");
   };
 
   return (
@@ -59,7 +36,7 @@ export default function Home() {
         <header className="fieldbook-topbar">
           <a href="https://bookchaowalit.com" className="fieldbook-mark" aria-label="Bookchaowalit home"><span>BOOK</span> / FIELD</a>
           <span>ONE BROWSER / MANY LEAVES</span>
-          <span>{ready ? `${notes.length} NOTES` : "OPENING NOTEBOOK"}</span>
+          <span>{ready ? noteCount(notes.length) : "OPENING NOTEBOOK"}</span>
         </header>
 
         <section className="fieldbook-intro">
@@ -73,7 +50,7 @@ export default function Home() {
         <section className="notebook" aria-label="Local notes notebook">
           <aside className="note-index">
             <div className="index-title"><span>INDEX</span><span>{filtered.length} FOUND</span></div>
-            <div className="index-actions"><button type="button" onClick={createNote}>+ New leaf</button><label><span className="sr-only">Search notes</span><input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Search leaves" /></label></div>
+            <div className="index-actions"><button type="button" onClick={newLeaf}>+ New leaf</button><label><span className="sr-only">Search notes</span><input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Search leaves" /></label></div>
             <div className="note-list">
               {filtered.length ? filtered.map((note, index) => (
                 <button type="button" key={note.id} className={`note-row${active?.id === note.id ? " active" : ""}`} onClick={() => setActiveId(note.id)} aria-pressed={active?.id === note.id}>
@@ -85,13 +62,13 @@ export default function Home() {
 
           <section className="note-sheet">
             {active ? <>
-              <div className="sheet-bar"><span>LEAF / {String(notes.indexOf(active) + 1).padStart(2, "0")}</span><span>{dateLabel(active.updatedAt)}</span></div>
+              <div className="sheet-bar"><span>LEAF / {String(leafNumber(notes, active.id)).padStart(2, "0")}</span><span>{dateLabel(active.updatedAt)}</span></div>
               <div className="sheet-content">
                 <label className="title-field"><span className="sr-only">Note title</span><input value={active.title} onChange={(event) => updateActive({ title: event.target.value })} placeholder="Untitled note" /></label>
                 <label className="body-field"><span className="sr-only">Note body</span><textarea value={active.body} onChange={(event) => updateActive({ body: event.target.value })} placeholder="Write the next line…" /></label>
                 <div className="sheet-foot"><span>PLAIN TEXT / LOCAL STORAGE</span><button type="button" onClick={deleteActive}>Remove this leaf</button></div>
               </div>
-            </> : <div className="no-note"><span className="no-note-mark">∷</span><p>Select a leaf or make a new one.</p><button type="button" onClick={createNote}>Open a new leaf</button></div>}
+            </> : <div className="no-note"><span className="no-note-mark">∷</span><p>Select a leaf or make a new one.</p><button type="button" onClick={newLeaf}>Open a new leaf</button></div>}
           </section>
         </section>
 
