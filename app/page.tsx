@@ -21,6 +21,9 @@ export default function Home() {
   const newRef = useRef<HTMLButtonElement>(null);
   const undoRef = useRef<HTMLButtonElement>(null);
   const focusTitleNext = useRef(false);
+  // On phones the pane that held focus is hidden when the view switches; move focus to the pane
+  // now shown (the title when a note opens, that note's row when going back to the list).
+  const focusAfterView = useRef<"title" | "row" | null>(null);
 
   const active = pickActive(notes, activeId);
   const filtered = filterNotes(notes, query);
@@ -33,6 +36,15 @@ export default function Home() {
     titleRef.current?.select();
   }, [activeId]);
   useEffect(() => { if (removed) undoRef.current?.focus(); }, [removed]);
+  useEffect(() => {
+    const target = focusAfterView.current;
+    focusAfterView.current = null;
+    // Only when focus was really lost: on wide screens both panes stay visible, so leave it alone.
+    const current = document.activeElement as HTMLElement | null;
+    if (current && current !== document.body && current.offsetParent !== null) return;
+    if (target === "title") titleRef.current?.focus();
+    if (target === "row") (document.querySelector<HTMLButtonElement>('.as-note-row[aria-current="true"]') ?? newRef.current)?.focus();
+  }, [view]);
   // The toast closes after 6 s, but never while it holds focus.
   useEffect(() => {
     if (!removed || toastFocused) return;
@@ -55,7 +67,12 @@ export default function Home() {
   }
   function open(id: string) {
     setActiveId(id);
+    if (view !== "note") focusAfterView.current = "title";
     setView("note");
+  }
+  function back() {
+    focusAfterView.current = "row";
+    setView("list");
   }
   function remove() {
     if (!active) return;
@@ -119,7 +136,7 @@ export default function Home() {
           {active ? (
             <article className="as-editor" aria-label="Note">
               <div className="as-editor-bar">
-                <button type="button" className="as-plain as-back" onClick={() => setView("list")}>‹ Notes</button>
+                <button type="button" className="as-plain as-back" onClick={back}>‹ Notes</button>
                 <span className="as-editor-meta">{ready ? (active.updatedAt ? `Edited ${dateLabel(active.updatedAt)}` : dateLabel(0)) : ""}</span>
                 <button type="button" className="as-plain as-danger" onClick={remove}>Delete</button>
               </div>

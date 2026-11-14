@@ -64,11 +64,22 @@ describe("notes", () => {
     expect(host.textContent).toContain("Nothing matches");
   });
 
-  it("opening a note and going back switches the phone panes", () => {
+  it("opening a note and going back switches the phone panes and moves focus with them", () => {
     act(() => { $<HTMLButtonElement>(".as-note-row")!.click(); });
     expect($(".as-notes")!.getAttribute("data-view")).toBe("note");
+    expect(document.activeElement).toBe($("#note-title"));
+    // happy-dom applies no phone CSS, so mimic the pane being hidden by dropping focus first.
+    act(() => { (document.activeElement as HTMLElement).blur(); });
     act(() => { button("‹ Notes").click(); });
     expect($(".as-notes")!.getAttribute("data-view")).toBe("list");
+    expect(document.activeElement).toBe($('.as-note-row[aria-current="true"]'));
+  });
+
+  it("leaves focus alone when the focused element is still visible (wide screens)", () => {
+    act(() => { $<HTMLButtonElement>(".as-note-row")!.click(); });
+    expect(document.activeElement).toBe($("#note-title"));
+    act(() => { button("‹ Notes").click(); });
+    expect(document.activeElement).toBe($("#note-title"));
   });
 });
 
