@@ -84,7 +84,9 @@ export default function Home() {
       <a className="as-skip" href="#main">Skip to content</a>
       <AppTop name="Notes" tagline="Saved in this browser · no sync" />
 
-      <div className="as-body as-notes" data-view={view}>
+      {/* With no note open (e.g. the last one was deleted in another tab) phones fall back to the list,
+          which always has New note; otherwise the empty pane would have no way back. */}
+      <div className="as-body as-notes" data-view={active ? view : "list"}>
         <aside className="as-side as-note-list" aria-label="Notes">
           <div className="as-note-list-head">
             <h2>{ready ? noteCount(notes.length) : "Notes"}</h2>

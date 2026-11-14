@@ -100,3 +100,13 @@ describe("delete and undo", () => {
     expect($(".as-toast")).toBeNull();
   });
 });
+
+describe("review fixes", () => {
+  it("falls back to the list pane when the open note disappears (deleted in another tab)", () => {
+    act(() => { $<HTMLButtonElement>(".as-note-row")!.click(); });
+    expect($(".as-notes")!.getAttribute("data-view")).toBe("note");
+    act(() => { noteStore.update(() => []); });
+    expect($(".as-notes")!.getAttribute("data-view")).toBe("list");
+    expect(host.textContent).toContain("No notes yet");
+  });
+});
