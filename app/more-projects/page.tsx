@@ -2,6 +2,8 @@ import { Metadata } from 'next';
 import Link from 'next/link';
 
 export const metadata: Metadata = {
+  // Its own canonical, so the root layout's "/" does not fold this page into the home page.
+  alternates: { canonical: '/more-projects' },
   title: 'Related Projects - Notes App',
   description: 'Explore more projects by Bookchaowalit. Discover our collection of web applications and tools.',
   keywords: ['related projects', 'more apps', 'Bookchaowalit', 'web applications'],

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { SEED_NOTES, noteCount, createNote, dateLabel, deleteNote, filterNotes, leafNumber, parseNotes, pickActive, sortNotes, updateNote, type Note } from "@/lib/notes";
+import { SEED_NOTES, noteCount, previewOf, restoreNote, createNote, dateLabel, deleteNote, filterNotes, leafNumber, parseNotes, pickActive, sortNotes, updateNote, type Note } from "@/lib/notes";
 
 const note = (id: string, updatedAt: number, title = id, body = ""): Note => ({ id, title, body, updatedAt });
 const notes = [note("a", 10, "Groceries", "milk"), note("b", 30, "Ideas", "Ship the MILK app"), note("c", 20, "Plan")];
@@ -49,13 +49,13 @@ describe("edits", () => {
   });
 
   it("counts notes with the right plural", () => {
-    expect(noteCount(1)).toBe("1 NOTE");
-    expect(noteCount(0)).toBe("0 NOTES");
-    expect(noteCount(2)).toBe("2 NOTES");
+    expect(noteCount(1)).toBe("1 note");
+    expect(noteCount(0)).toBe("0 notes");
+    expect(noteCount(2)).toBe("2 notes");
   });
 
   it("labels an untouched note as a new leaf", () => {
-    expect(dateLabel(0)).toBe("NEW LEAF");
+    expect(dateLabel(0)).toBe("Not edited yet");
     expect(dateLabel(Date.UTC(2026, 9, 23, 12), "en-US")).toBe("Oct 23");
   });
 });
@@ -74,5 +74,18 @@ describe("parseNotes", () => {
 
   it("keeps an empty notebook (every note deleted)", () => {
     expect(parseNotes("[]")).toEqual([]);
+  });
+});
+
+describe("App shell helpers", () => {
+  const a: Note = { id: "a", title: "A", body: "\n  first line  \nsecond", updatedAt: 1 };
+  it("previews the first non-empty body line", () => {
+    expect(previewOf(a.body)).toBe("first line");
+    expect(previewOf("   \n ")).toBe("No additional text");
+  });
+  it("restores a deleted note once", () => {
+    expect(restoreNote([], a)).toEqual([a]);
+    const list = [a];
+    expect(restoreNote(list, a)).toBe(list);
   });
 });
