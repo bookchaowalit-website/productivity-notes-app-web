@@ -85,7 +85,8 @@ export default function Home() {
   function closeToast() {
     setRemoved(null);
     setToastFocused(false);
-    newRef.current?.focus();
+    // On phones only one pane shows: with a note open the list (and New note) is display:none.
+    (active && view === "note" ? titleRef : newRef).current?.focus();
   }
   function undo() {
     if (!removed) return;

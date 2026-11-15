@@ -95,6 +95,17 @@ describe("delete and undo", () => {
     expect(document.activeElement?.textContent).toContain("New note");
   });
 
+  it("closing the toast while another note is open returns focus to that note, not the hidden list", () => {
+    act(() => { button("New note").click(); });
+    act(() => { button("Delete").click(); });
+    expect(document.activeElement?.textContent).toBe("Undo");
+    act(() => { $<HTMLButtonElement>(".as-note-row")!.click(); });
+    expect($(".as-notes")!.getAttribute("data-view")).toBe("note");
+    act(() => { button("Undo").click(); });
+    expect(titles()).toHaveLength(2);
+    expect(document.activeElement).toBe($("#note-title"));
+  });
+
   it("Escape dismisses; the toast stays while focused and closes six seconds after focus leaves", () => {
     act(() => { button("Delete").click(); });
     act(() => { $(".as-toast")!.dispatchEvent(new KeyboardEvent("keydown", { key: "Escape", bubbles: true })); });
