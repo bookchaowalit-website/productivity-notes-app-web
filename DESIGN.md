@@ -1,3 +1,11 @@
+# Notes — design
+
+Since 2026-11-14 this app uses the shared App shell (`APP-SHELL.md`) in two panes like Notes:
+list with search on the left, the open note on the right (one pane at a time on phones), and
+Delete with Undo. The earlier "field book" theme below is kept for history.
+
+---
+
 ---
 name: Field Book
 description: A single-browser notebook for leaving, finding, and editing short notes.

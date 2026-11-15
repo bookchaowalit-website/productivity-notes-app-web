@@ -1,11 +1,11 @@
-// Field notebook: note list rules and the browser-local store. Pure apart from the store at the end.
+// Notes: note list rules and the browser-local store. Pure apart from the store at the end.
 import { browserStorage, createLocalStore } from "@/lib/local-store";
 
 export type Note = { id: string; title: string; body: string; updatedAt: number };
 
 export const STORAGE_KEY = "notes-app-v1";
 export const SEED_NOTES: Note[] = [
-  { id: "1", title: "Welcome", body: "This note lives in localStorage.\n\nMake a new leaf when the thought arrives.", updatedAt: 0 },
+  { id: "1", title: "Welcome", body: "This note lives in localStorage.\n\nPress New note when a thought arrives.", updatedAt: 0 },
 ];
 
 /** Most recently edited first; ties keep their stored order. */
@@ -41,12 +41,22 @@ export function deleteNote(notes: Note[], id: string): Note[] {
   return notes.filter((note) => note.id !== id);
 }
 
+/** Undo a delete: put the note back unless it is already there (the list is sorted by edit time). */
+export function restoreNote(notes: Note[], note: Note): Note[] {
+  return notes.some((entry) => entry.id === note.id) ? notes : [...notes, note];
+}
+
+/** First non-empty line of the body, for the one-line preview under a title in the list. */
+export function previewOf(body: string): string {
+  return body.split("\n").map((line) => line.trim()).find(Boolean) ?? "No additional text";
+}
+
 export function noteCount(count: number): string {
-  return `${count} ${count === 1 ? "NOTE" : "NOTES"}`;
+  return `${count} ${count === 1 ? "note" : "notes"}`;
 }
 
 export function dateLabel(timestamp: number, locale?: string): string {
-  return timestamp ? new Date(timestamp).toLocaleDateString(locale, { month: "short", day: "numeric" }) : "NEW LEAF";
+  return timestamp ? new Date(timestamp).toLocaleDateString(locale, { month: "short", day: "numeric" }) : "Not edited yet";
 }
 
 function isNote(value: unknown): value is Note {

@@ -1,14 +1,9 @@
 import type { Metadata } from "next";
-import { Geist, Geist_Mono } from "next/font/google";
+import { Geist } from "next/font/google";
 import "./globals.css";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
-  subsets: ["latin"],
-});
-
-const geistMono = Geist_Mono({
-  variable: "--font-geist-mono",
   subsets: ["latin"],
 });
 
@@ -19,7 +14,8 @@ export const metadata: Metadata = {
   authors: [{ name: "Bookchaowalit", url: "https://bookchaowalit.com" }],
   creator: "Bookchaowalit",
   publisher: "Bookchaowalit",
-  metadataBase: new URL("https://bookchaowalit.com"),
+  metadataBase: new URL("https://notes-app.bookchaowalit.com"),
+  alternates: { canonical: "/" },
   openGraph: {
     type: "website",
     locale: "en_US",
@@ -42,19 +38,9 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en">
-      <body className={`${geistSans.variable} ${geistMono.variable} antialiased`}>
-        {/*
-          THESIS: make note-taking feel like leaving a marked leaf in a field book, not filling a SaaS form.
-          OWN-WORLD: slate paper, yellow field marks, rust tabs, and a ruled note sheet define the notebook.
-          STORY: find a leaf, make a new one, write without ceremony, and remove it when it no longer earns its place.
-          FIRST VIEWPORT: the notebook thesis, local-storage boundary, index, search, and active note sheet appear immediately.
-          FORM: index tabs, paper writing surface, field labels, and explicit local states define every interaction.
-          SEED: f9d83d8c · assigned direction 4 · operate mode.
-          FINISH: unreviewed and undocumented is unfinished; this build ends with the finish review, the verdict, DESIGN.md, and every shipping raster carrying its provenance
-        */}
-        {children}
-      </body>
+    // The font variable sits on <html>: the App shell tokens live on :root and read it from there.
+    <html lang="en" className={geistSans.variable}>
+      <body>{children}</body>
     </html>
   );
 }
