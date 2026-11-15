@@ -120,4 +120,13 @@ describe("review fixes", () => {
     expect($(".as-notes")!.getAttribute("data-view")).toBe("list");
     expect(host.textContent).toContain("No notes yet");
   });
+
+  it("the skip link target holds both panes, so it is visible on phones in list view too", () => {
+    const target = document.getElementById("main")!;
+    expect($(".as-skip")!.getAttribute("href")).toBe("#main");
+    expect(target.classList.contains("as-notes")).toBe(true);
+    expect(target.tabIndex).toBe(-1);
+    expect(target.contains($(".as-note-list"))).toBe(true);
+    expect(target.contains($(".as-note-pane"))).toBe(true);
+  });
 });

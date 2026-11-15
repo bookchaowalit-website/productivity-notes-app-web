@@ -103,7 +103,8 @@ export default function Home() {
 
       {/* With no note open (e.g. the last one was deleted in another tab) phones fall back to the list,
           which always has New note; otherwise the empty pane would have no way back. */}
-      <div className="as-body as-notes" data-view={active ? view : "list"}>
+      {/* The skip target wraps both panes: on phones one of them is display:none, so <main> alone could be hidden. */}
+      <div id="main" tabIndex={-1} className="as-body as-notes" data-view={active ? view : "list"}>
         <aside className="as-side as-note-list" aria-label="Notes">
           <div className="as-note-list-head">
             <h2>{ready ? noteCount(notes.length) : "Notes"}</h2>
@@ -132,7 +133,7 @@ export default function Home() {
           )}
         </aside>
 
-        <main id="main" className="as-main as-note-pane">
+        <main className="as-main as-note-pane">
           {active ? (
             <article className="as-editor" aria-label="Note">
               <div className="as-editor-bar">

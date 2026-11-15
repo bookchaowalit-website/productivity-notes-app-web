@@ -179,6 +179,9 @@
 .as-note-row strong { font-size: 16px; font-weight: 600; overflow-wrap: anywhere; }
 .as-note-row span { overflow: hidden; color: var(--as-muted); font-size: 14px; text-overflow: ellipsis; white-space: nowrap; }
 .as-note-row time { color: var(--as-fg); font-weight: 500; }
+/* --as-muted on the selected or hover tint is 4.15:1; --as-grey keeps 6.5:1. */
+.as-note-row:hover span, .as-note-row[aria-current="true"] span { color: var(--as-grey); }
+.as-notes:focus { outline: none; }
 .as-editor { display: flex; min-height: 480px; flex-direction: column; border: 1px solid var(--as-line); border-radius: 18px; background: var(--as-surface); box-shadow: var(--as-shadow); overflow: hidden; }
 .as-editor-bar { display: flex; align-items: center; justify-content: space-between; gap: 8px; min-height: 52px; padding: 4px 8px; border-bottom: 1px solid var(--as-line); }
 .as-editor-meta { flex: 1; color: var(--as-muted); font-size: 13px; text-align: center; }
