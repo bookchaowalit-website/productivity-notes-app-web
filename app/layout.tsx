@@ -9,7 +9,7 @@ const geistSans = Geist({
 
 export const metadata: Metadata = {
   title: "Notes App | Bookchaowalit",
-  description: "Local notes list with search and markdown-ish body text.",
+  description: "Plain-text notes with search, saved in this browser only. No account, no sync.",
   keywords: ["notes","localStorage","search"],
   authors: [{ name: "Bookchaowalit", url: "https://bookchaowalit.com" }],
   creator: "Bookchaowalit",
@@ -20,13 +20,13 @@ export const metadata: Metadata = {
     type: "website",
     locale: "en_US",
     title: "Notes App | Bookchaowalit",
-    description: "Local notes list with search and markdown-ish body text.",
+    description: "Plain-text notes with search, saved in this browser only. No account, no sync.",
     siteName: "Bookchaowalit",
   },
   twitter: {
     card: "summary_large_image",
     title: "Notes App | Bookchaowalit",
-    description: "Local notes list with search and markdown-ish body text.",
+    description: "Plain-text notes with search, saved in this browser only. No account, no sync.",
     creator: "@bookchaowalit",
   },
   robots: { index: true, follow: true },
