@@ -92,7 +92,9 @@ describe("delete and undo", () => {
     act(() => { button("Undo").click(); });
     expect(titles()).toEqual(["Welcome"]);
     expect($<HTMLInputElement>("#note-title")!.value).toBe("Welcome");
-    expect(document.activeElement?.textContent).toContain("New note");
+    // Phones show one pane: Undo must bring the editor back, not leave the list showing.
+    expect($(".as-notes")!.getAttribute("data-view")).toBe("note");
+    expect(document.activeElement).toBe($("#note-title"));
   });
 
   it("closing the toast while another note is open returns focus to that note, not the hidden list", () => {

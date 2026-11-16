@@ -92,9 +92,14 @@ export default function Home() {
     if (!removed) return;
     const note = removed;
     noteStore.update((current) => restoreNote(current, note));
+    // Reopen it: remove() switched phones to the list, so show the editor again and put focus
+    // in the restored note's title (the activeId effect does that once it renders).
+    focusTitleNext.current = true;
     setActiveId(note.id);
+    setView("note");
+    setRemoved(null);
+    setToastFocused(false);
     setAnnouncement(`Restored “${note.title || "Untitled note"}”.`);
-    closeToast();
   }
 
   return (
