@@ -191,8 +191,13 @@
 .as-editor-bar { display: flex; align-items: center; justify-content: space-between; gap: 8px; min-height: 52px; padding: 4px 8px; border-bottom: 1px solid var(--as-line); }
 .as-editor-meta { flex: 1; color: var(--as-muted); font-size: 13px; text-align: center; }
 .as-back { visibility: hidden; }
-.as-editor-title { width: 100%; padding: 20px 24px 4px; border: 0; background: transparent; font-size: 26px; font-weight: 700; letter-spacing: -.01em; }
-.as-editor-body { flex: 1; width: 100%; min-height: 360px; padding: 8px 24px 24px; border: 0; background: transparent; font-size: 17px; line-height: 1.6; resize: none; }
+.as-editor-title { width: 100%; padding: 20px 24px 12px; border: 0; background: transparent; font-size: 26px; font-weight: 700; letter-spacing: -.01em; }
+.as-editor-body { flex: 1; width: 100%; min-height: 360px; padding: 12px 24px 24px; border: 0; background: transparent; font-size: 17px; line-height: 1.6; resize: none; }
+/* Resting edges at 3:1 (--as-field-line): the card's edge and the lines above and below the title box
+   both fields, so they read as editable before they take focus (touch screens have no hover). */
+.as-editor { border-color: var(--as-field-line); }
+.as-editor-bar { border-bottom-color: var(--as-field-line); }
+.as-editor-title { border-bottom: 1px solid var(--as-field-line); }
 /* Each field shows its own solid 3px ring, drawn inside (the card clips overflow), so Tab from the
    title to the text visibly moves to the field that will take the typing. */
 .as-editor-title:focus-visible, .as-editor-body:focus-visible { outline: 3px solid var(--as-focus); outline-offset: -3px; }
@@ -202,8 +207,8 @@
   .as-notes[data-view="list"] .as-note-pane, .as-notes[data-view="note"] .as-note-list { display: none; }
   .as-back { visibility: visible; }
   .as-editor { min-height: 60vh; }
-  .as-editor-title { padding: 16px 16px 4px; }
-  .as-editor-body { padding: 8px 16px 16px; }
+  .as-editor-title { padding: 16px 16px 12px; }
+  .as-editor-body { padding: 12px 16px 16px; }
   .as-note-list-head .as-button { flex: none; }
 }
 /* The note count heading is a real heading, not the small sidebar label the shell hides on phones. */

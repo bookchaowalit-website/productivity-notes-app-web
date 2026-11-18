@@ -5,6 +5,8 @@ import { AppFoot, AppTop, PlusIcon } from "@/components/app-shell";
 import { createNote, dateLabel, deleteNote, filterNotes, noteCount, noteStore, pickActive, previewOf, restoreNote, updateNote, type Note } from "@/lib/notes";
 
 const noop = () => () => {};
+// Matches the CSS breakpoint where only one pane shows.
+const PHONE = "(max-width: 760px)";
 const deletedLabel = (batch: Note[]) => (batch.length === 1 ? `Deleted “${batch[0].title || "Untitled note"}”` : `Deleted ${batch.length} notes`);
 
 export default function Home() {
@@ -30,6 +32,9 @@ export default function Home() {
   // now shown (the title when a note opens, that note's row when going back to the list).
   const focusAfterView = useRef<"title" | "row" | null>(null);
   const shownView = useRef<"list" | "note">("list");
+  // On phones opening a note adds a history entry, so the browser or Android Back returns to the list
+  // (and its search) instead of leaving the app. True while that entry is the current one.
+  const noteInHistory = useRef(false);
 
   const active = pickActive(notes, activeId);
   // The open note can vanish under us (deleted in another tab). Go back to the list for real, even
@@ -49,6 +54,16 @@ export default function Home() {
     titleRef.current?.select();
   }, [activeId]);
   useEffect(() => { if (removed.length) undoRef.current?.focus(); }, [removed]);
+  useEffect(() => {
+    function onPop() {
+      if (!noteInHistory.current) return;
+      noteInHistory.current = false;
+      focusAfterView.current = "row";
+      setView("list");
+    }
+    window.addEventListener("popstate", onPop);
+    return () => window.removeEventListener("popstate", onPop);
+  }, []);
   useEffect(() => {
     // A switch to the list that no handler asked for (the open note vanished) also lands on the list.
     const cameFromNote = shownView.current === "note";
@@ -78,15 +93,28 @@ export default function Home() {
     setQuery("");
     focusTitleNext.current = true;
     setActiveId(id);
-    setView("note");
+    showNote();
     setAnnouncement("New note created.");
+  }
+  function showNote() {
+    const phone = typeof window.matchMedia === "function" && window.matchMedia(PHONE).matches;
+    if (phone && !noteInHistory.current) {
+      window.history.pushState({ notesPane: "note" }, "");
+      noteInHistory.current = true;
+    }
+    setView("note");
   }
   function open(id: string) {
     setActiveId(id);
     if (view !== "note") focusAfterView.current = "title";
-    setView("note");
+    showNote();
   }
   function back() {
+    // ‹ Notes uses the same history entry as the browser Back (popstate below switches the pane).
+    if (noteInHistory.current) {
+      window.history.back();
+      return;
+    }
     focusAfterView.current = "row";
     setView("list");
   }
@@ -121,7 +149,7 @@ export default function Home() {
     // put focus in the restored note's title (the activeId effect does that once it renders).
     focusTitleNext.current = true;
     setActiveId(note.id);
-    setView("note");
+    showNote();
     setRemoved([]);
     setToastFocused(false);
     setAnnouncement(batch.length === 1 ? `Restored “${note.title || "Untitled note"}”.` : `Restored ${batch.length} notes.`);

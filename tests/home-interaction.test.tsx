@@ -210,4 +210,55 @@ describe("review fixes", () => {
     expect(css).toContain(".as-editor-title:focus-visible, .as-editor-body:focus-visible { outline: 3px solid var(--as-focus); outline-offset: -3px; }");
     expect(css).not.toContain("color-mix(in srgb, var(--as-focus) 35%");
   });
+
+  it("on phones opening a note adds a history entry; browser Back and ‹ Notes return to the list", () => {
+    vi.stubGlobal("matchMedia", (query: string) => ({ matches: query === "(max-width: 760px)" }));
+    const push = vi.spyOn(window.history, "pushState");
+    const back = vi.spyOn(window.history, "back").mockImplementation(() => { window.dispatchEvent(new PopStateEvent("popstate")); });
+    try {
+      act(() => { $<HTMLButtonElement>(".as-note-row")!.click(); });
+      expect($(".as-notes")!.getAttribute("data-view")).toBe("note");
+      expect(push).toHaveBeenCalledTimes(1);
+      // Browser / Android Back.
+      act(() => { window.dispatchEvent(new PopStateEvent("popstate")); });
+      expect($(".as-notes")!.getAttribute("data-view")).toBe("list");
+      // A second note open pushes again; ‹ Notes goes through history too, so there is no stale entry.
+      act(() => { $<HTMLButtonElement>(".as-note-row")!.click(); });
+      expect(push).toHaveBeenCalledTimes(2);
+      act(() => { button("‹ Notes").click(); });
+      expect(back).toHaveBeenCalledTimes(1);
+      expect($(".as-notes")!.getAttribute("data-view")).toBe("list");
+      // A popstate that is not ours (no entry pushed) changes nothing.
+      act(() => { $<HTMLButtonElement>(".as-note-row")!.click(); });
+      act(() => { window.dispatchEvent(new PopStateEvent("popstate")); });
+      act(() => { window.dispatchEvent(new PopStateEvent("popstate")); });
+      expect($(".as-notes")!.getAttribute("data-view")).toBe("list");
+    } finally {
+      push.mockRestore();
+      back.mockRestore();
+      vi.unstubAllGlobals();
+    }
+  });
+
+  it("on wide screens opening a note adds no history entry", () => {
+    vi.stubGlobal("matchMedia", () => ({ matches: false }));
+    const push = vi.spyOn(window.history, "pushState");
+    try {
+      act(() => { $<HTMLButtonElement>(".as-note-row")!.click(); });
+      act(() => { button("‹ Notes").click(); });
+      expect(push).not.toHaveBeenCalled();
+      expect($(".as-notes")!.getAttribute("data-view")).toBe("list");
+    } finally {
+      push.mockRestore();
+      vi.unstubAllGlobals();
+    }
+  });
+
+  it("the editor fields have 3:1 resting edges (card edge, lines above and below the title)", async () => {
+    const { readFileSync } = await import("node:fs");
+    const css = readFileSync(`${process.cwd()}/app/app-shell.css`, "utf8");
+    expect(css).toContain(".as-editor { border-color: var(--as-field-line); }");
+    expect(css).toContain(".as-editor-bar { border-bottom-color: var(--as-field-line); }");
+    expect(css).toContain(".as-editor-title { border-bottom: 1px solid var(--as-field-line); }");
+  });
 });
