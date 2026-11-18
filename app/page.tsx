@@ -62,13 +62,15 @@ export default function Home() {
   useEffect(() => { if (removed.length) undoRef.current?.focus(); }, [removed]);
   useEffect(() => { shownNoteId.current = active?.id ?? ""; }, [active]);
   useEffect(() => {
-    const history = createNotesHistory(window.history);
+    const navigation = (window as { navigation?: { canGoForward?: boolean } }).navigation;
+    const history = createNotesHistory(window.history, () => navigation?.canGoForward);
     nav.current = history;
     const exists = (noteId: string) => noteStore.getSnapshot().some((note) => note.id === noteId);
     // The entry we land on decides the pane: a note entry (Forward, or the current entry after a
     // reload) opens its note again; any other entry shows the list.
-    function showEntry(state: unknown, moveFocus: boolean) {
-      const landing = history.land(state, exists);
+    // initial: the current entry on mount (reload, or arriving from another page), not a popstate.
+    function showEntry(state: unknown, moveFocus: boolean, initial = false) {
+      const landing = history.land(state, exists, initial);
       if (!landing) return;
       if (landing.show === "note") {
         if (moveFocus && shownView.current !== "note") focusAfterView.current = "title";
@@ -82,7 +84,7 @@ export default function Home() {
     }
     const onPop = (event: PopStateEvent) => showEntry(event.state, true);
     // Reloaded on a note entry: show that note in place (no focus grab, no history move).
-    showEntry(window.history.state, false);
+    showEntry(window.history.state, false, true);
     // Narrowed past the breakpoint (rotation, resize): only one pane stays, and the pane holding focus
     // decides which. Focus in the list (e.g. the search box) keeps the list; otherwise the note being
     // edited (focus in the editor, or the note pane shown) stays open with its entry, or Back would

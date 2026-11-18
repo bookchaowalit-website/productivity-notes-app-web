@@ -7,6 +7,7 @@ function fakeHistory(state: unknown = null) {
     pushState: vi.fn((next: unknown) => { h.state = next; }),
     replaceState: vi.fn((next: unknown) => { h.state = next; }),
     back: vi.fn(),
+    forward: vi.fn(),
   };
   return h;
 }
@@ -66,10 +67,12 @@ describe("createNotesHistory", () => {
     expect(nav.land({ notesPane: "note", noteId: "a" }, all)).toEqual({ show: "note", noteId: "a" });
     expect(nav.land(null, all)).toEqual({ show: "list" });
     expect(nav.land(null, all)).toBeNull();
-    expect(nav.land({ __NA: true, notesPane: "note", noteId: "gone" }, none)).toEqual({ show: "list" });
-    // No second list entry: history steps back to the list entry below, state untouched.
+    // On mount (reload / Back from another page) a deleted note's entry steps back onto the list
+    // entry below: no second list entry, state untouched.
+    expect(nav.land({ __NA: true, notesPane: "note", noteId: "gone" }, none, true)).toEqual({ show: "list" });
     expect(h.replaceState).not.toHaveBeenCalled();
     expect(h.back).toHaveBeenCalledTimes(1);
+    expect(h.forward).not.toHaveBeenCalled();
     expect(nav.inEntry).toBe(false);
     // That Back's popstate is ours: nothing else to show.
     expect(nav.land(null, all)).toBeNull();
@@ -78,7 +81,7 @@ describe("createNotesHistory", () => {
   it("a note opened while bouncing off a deleted note's entry is written once the bounce lands", () => {
     const h = fakeHistory();
     const nav = createNotesHistory(h as unknown as History);
-    nav.land({ notesPane: "note", noteId: "gone" }, none);
+    nav.land({ notesPane: "note", noteId: "gone" }, none, true);
     nav.record("b");
     expect(h.pushState).not.toHaveBeenCalled();
     nav.land(null, all);
@@ -96,5 +99,57 @@ describe("createNotesHistory", () => {
     expect(nav.land(null, all)).toBeNull();
     expect(h.pushState).toHaveBeenCalledTimes(1);
     expect(nav.inEntry).toBe(false);
+  });
+});
+
+describe("Forward onto a deleted note's entry", () => {
+  it("keeps going forward, so a later page stays reachable, and lands normally", () => {
+    const h = fakeHistory();
+    const nav = createNotesHistory(h as unknown as History, () => true);
+    expect(nav.land({ notesPane: "note", noteId: "gone" }, none)).toEqual({ show: "list" });
+    expect(h.forward).toHaveBeenCalledTimes(1);
+    expect(h.back).not.toHaveBeenCalled();
+    // A further entry of this page lands (here a foreign entry): handled normally.
+    expect(nav.land(null, all)).toBeNull();
+    expect(h.back).not.toHaveBeenCalled();
+  });
+
+  it("forwards too where the browser cannot tell what is beyond", () => {
+    const h = fakeHistory();
+    const nav = createNotesHistory(h as unknown as History);
+    nav.land({ notesPane: "note", noteId: "gone" }, none);
+    expect(h.forward).toHaveBeenCalledTimes(1);
+    expect(h.back).not.toHaveBeenCalled();
+    // That Forward may never land (last entry), so a note opened next is recorded at once.
+    nav.record("b");
+    expect(h.pushState).toHaveBeenCalledWith({ notesPane: "note", noteId: "b" }, "");
+  });
+
+  it("with nothing beyond, steps back onto the list entry (no two list stops in a row)", () => {
+    const h = fakeHistory();
+    const nav = createNotesHistory(h as unknown as History, () => false);
+    nav.land({ notesPane: "note", noteId: "gone" }, none);
+    expect(h.forward).not.toHaveBeenCalled();
+    expect(h.back).toHaveBeenCalledTimes(1);
+    nav.record("b");
+    expect(h.pushState).not.toHaveBeenCalled();
+    expect(nav.land(null, all)).toBeNull();
+    expect(h.pushState).toHaveBeenCalledWith({ notesPane: "note", noteId: "b" }, "");
+  });
+
+  it("a note opened during the skip goes on top of where Forward landed, unless that opens a note", () => {
+    const h = fakeHistory();
+    const nav = createNotesHistory(h as unknown as History, () => true);
+    nav.land({ notesPane: "note", noteId: "gone" }, none);
+    nav.record("b");
+    expect(h.pushState).not.toHaveBeenCalled();
+    expect(nav.land(null, all)).toBeNull();
+    expect(h.pushState).toHaveBeenCalledWith({ notesPane: "note", noteId: "b" }, "");
+    nav.drop();
+    nav.land(null, all);
+    nav.land({ notesPane: "note", noteId: "gone" }, none);
+    nav.record("c");
+    expect(nav.land({ notesPane: "note", noteId: "a" }, all)).toEqual({ show: "note", noteId: "a" });
+    expect(h.pushState).toHaveBeenCalledTimes(1);
   });
 });

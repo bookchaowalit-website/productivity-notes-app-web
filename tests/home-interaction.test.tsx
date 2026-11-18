@@ -298,14 +298,19 @@ describe("phone history follows the pane", () => {
     }
   });
 
-  it("Forward onto the entry of a note deleted since stays on the list and steps back off it (no second list entry)", () => {
+  it("Forward onto the entry of a note deleted since shows the list and keeps going forward (no second list entry)", () => {
     const h = phone();
+    const forward = vi.spyOn(window.history, "forward").mockImplementation(() => {});
     try {
       pop({ notesPane: "note", noteId: "gone" });
       expect(view()).toBe("list");
-      expect(h.back).toHaveBeenCalledTimes(1);
+      expect(forward).toHaveBeenCalledTimes(1);
+      expect(h.back).not.toHaveBeenCalled();
       expect(h.replace).not.toHaveBeenCalled();
+      // Forward reached a further page entry: no fallback Back afterwards.
+      pop(null);
     } finally {
+      forward.mockRestore();
       h.restore();
     }
   });

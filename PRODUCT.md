@@ -43,13 +43,15 @@ Forward reopens the note. These races are unlikely and left as they are (checked
   `history.back()`, which is asynchronous. A note opened before its `popstate` arrives is queued and
   recorded afterwards; if the browser drops that `popstate` (for example, the tab is frozen mid-step),
   the queued entry is never written and the next Back leaves the app instead of returning to the list.
-- **Dead Forward stop.** A deleted note's entry stays in the forward history. Forward onto it shows
-  the list and steps straight back, so that Forward appears to do nothing (no second list entry is
-  created).
+- **Deleted note's entry.** It stays in the history (browsers cannot remove entries). Forward onto
+  it shows the list and keeps going forward, so later pages stay reachable; when the browser reports
+  nothing beyond it (`navigation.canGoForward`), the app steps back onto the list entry instead, so
+  that Forward appears to do nothing. Browsers without the Navigation API cannot tell, so there a
+  Forward onto the last entry stays on it and Back from it needs one extra press.
 - **User Back racing our Back.** If the user presses Back while the app's own `history.back()` is
   still pending, both steps run and the app may leave by one entry more than expected.
 - **Other tabs.** History is per tab. A note deleted or created in another tab is seen through
   storage events, not history, so that tab's Back/Forward stops may point at notes that are gone
-  (handled as the dead Forward stop above).
+  (handled as the deleted note's entry above).
 - **Breakpoint flips during a pending Back.** Crossing the 760px breakpoint while a Back is pending
   keeps the pane that holds focus, but its entry is written only once the Back lands.
