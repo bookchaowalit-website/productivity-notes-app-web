@@ -207,3 +207,6 @@
 }
 /* The note count heading is a real heading, not the small sidebar label the shell hides on phones. */
 .as-side .as-note-list-head h2 { display: block; margin: 0; color: var(--as-fg); font-size: 20px; font-weight: 700; }
+
+/* The top bar is sticky: keep skip-link targets and keyboard-focused controls clear of it when the page scrolls to them. */
+html { scroll-padding-top: 64px; scroll-padding-bottom: 16px; }
