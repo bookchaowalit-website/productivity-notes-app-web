@@ -42,6 +42,8 @@ export function createNotesHistory(history: HistoryLike) {
     },
     /** The editor closed outside history (Delete, note gone): step off its entry. */
     drop() {
+      // The editor closed: a note queued behind a pending Back is no longer shown, so forget it.
+      queued = "";
       if (!inEntry) return;
       inEntry = false;
       pendingBack = true;

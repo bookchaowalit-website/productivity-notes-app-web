@@ -73,4 +73,17 @@ describe("createNotesHistory", () => {
     expect(nav.land({ __NA: true, notesPane: "note", noteId: "gone" }, none)).toEqual({ show: "list" });
     expect(h.replaceState).toHaveBeenCalledWith({ __NA: true, notesPane: undefined, noteId: undefined }, "");
   });
+
+  it("closing the editor before the pending Back lands cancels the queued entry", () => {
+    const h = fakeHistory();
+    const nav = createNotesHistory(h as unknown as History);
+    nav.record("a");
+    nav.drop();
+    nav.record("b");
+    nav.drop();
+    expect(h.back).toHaveBeenCalledTimes(1);
+    expect(nav.land(null, all)).toBeNull();
+    expect(h.pushState).toHaveBeenCalledTimes(1);
+    expect(nav.inEntry).toBe(false);
+  });
 });

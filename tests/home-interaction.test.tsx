@@ -546,3 +546,53 @@ describe("history: queued entry, router state, breakpoint keeps the edited note"
     }
   });
 });
+
+describe("history: cancel queued entry, breakpoint keeps search focus", () => {
+  const view = () => $(".as-notes")!.getAttribute("data-view");
+  function remount() {
+    act(() => root.unmount());
+    root = createRoot(host);
+    act(() => root.render(<Home />));
+  }
+
+  it("delete A, open B, then ‹ Notes before Back lands: no entry for B is written afterwards", () => {
+    vi.stubGlobal("matchMedia", (query: string) => ({ matches: query === "(max-width: 760px)" }));
+    const push = vi.spyOn(window.history, "pushState");
+    const back = vi.spyOn(window.history, "back").mockImplementation(() => {});
+    try {
+      act(() => { button("New note").click(); });
+      act(() => { button("Delete").click(); });
+      expect(back).toHaveBeenCalledTimes(1);
+      act(() => { $<HTMLButtonElement>(".as-note-row")!.click(); });
+      expect(view()).toBe("note");
+      act(() => { button("‹ Notes").click(); });
+      expect(view()).toBe("list");
+      act(() => { window.dispatchEvent(new PopStateEvent("popstate", { state: null })); });
+      expect(push).toHaveBeenCalledTimes(1);
+      expect(view()).toBe("list");
+    } finally {
+      push.mockRestore();
+      back.mockRestore();
+      vi.unstubAllGlobals();
+    }
+  });
+
+  it("narrowing to phone with focus in the search box shows the list and keeps that focus", () => {
+    let phone = false;
+    const listeners: (() => void)[] = [];
+    vi.stubGlobal("matchMedia", () => ({ get matches() { return phone; }, addEventListener: (_: string, cb: () => void) => listeners.push(cb), removeEventListener: () => {} }));
+    try {
+      remount();
+      act(() => { $<HTMLButtonElement>(".as-note-row")!.click(); });
+      expect(view()).toBe("note");
+      const search = $<HTMLInputElement>('input[type="search"]')!;
+      act(() => { search.focus(); });
+      phone = true;
+      act(() => { listeners.forEach((cb) => cb()); });
+      expect(view()).toBe("list");
+      expect(document.activeElement).toBe(search);
+    } finally {
+      vi.unstubAllGlobals();
+    }
+  });
+});

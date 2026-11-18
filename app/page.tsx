@@ -40,6 +40,7 @@ export default function Home() {
   // The note the editor shows (on wide screens one shows even before any row is picked).
   const shownNoteId = useRef("");
   const paneRef = useRef<HTMLElement>(null);
+  const listRef = useRef<HTMLElement>(null);
 
   const active = pickActive(notes, activeId);
   // The open note can vanish under us (deleted in another tab). Go back to the list for real, even
@@ -82,16 +83,22 @@ export default function Home() {
     const onPop = (event: PopStateEvent) => showEntry(event.state, true);
     // Reloaded on a note entry: show that note in place (no focus grab, no history move).
     showEntry(window.history.state, false);
-    // Narrowed past the breakpoint (rotation, resize): the list hides, so keep the note being edited
-    // open (the note pane, or focus inside the editor on wide screens) and give it its entry, or
-    // Back would leave the app.
+    // Narrowed past the breakpoint (rotation, resize): only one pane stays, and the pane holding focus
+    // decides which. Focus in the list (e.g. the search box) keeps the list; otherwise the note being
+    // edited (focus in the editor, or the note pane shown) stays open with its entry, or Back would
+    // leave the app.
     const media = typeof window.matchMedia === "function" ? window.matchMedia(PHONE) : null;
     const onMedia = () => {
       const noteId = shownNoteId.current;
-      if (!isPhone() || !noteId || history.inEntry) return;
+      if (!isPhone()) return;
+      if (listRef.current?.contains(document.activeElement)) {
+        // Leaving the note view also drops its entry (the view effect).
+        if (shownView.current === "note") setView("list");
+        return;
+      }
       const editing = shownView.current === "note" || Boolean(paneRef.current?.contains(document.activeElement));
-      if (!editing) return;
-      history.record(noteId);
+      if (!noteId || !editing) return;
+      if (!history.inEntry) history.record(noteId);
       setActiveId(noteId);
       setView("note");
     };
@@ -205,7 +212,7 @@ export default function Home() {
           which always has New note; otherwise the empty pane would have no way back. */}
       {/* The skip target wraps both panes: on phones one of them is display:none, so <main> alone could be hidden. */}
       <main id="main" tabIndex={-1} className="as-body as-notes" data-view={active ? view : "list"}>
-        <aside className="as-side as-note-list" aria-label="Notes">
+        <aside ref={listRef} className="as-side as-note-list" aria-label="Notes">
           <div className="as-note-list-head">
             <h2>{ready ? noteCount(notes.length) : "Notes"}</h2>
             <button ref={newRef} type="button" className="as-button" onClick={newNote}><PlusIcon />New note</button>
