@@ -32,8 +32,9 @@ export default function Home() {
   // now shown (the title when a note opens, that note's row when going back to the list).
   const focusAfterView = useRef<"title" | "row" | null>(null);
   const shownView = useRef<"list" | "note">("list");
-  // On phones opening a note adds a history entry, so the browser or Android Back returns to the list
-  // (and its search) instead of leaving the app. True while that entry is the current one.
+  // On phones opening a note adds a history entry ({ notesPane: "note", noteId }), so the browser or
+  // Android Back returns to the list (and its search) instead of leaving the app, and Forward reopens
+  // that note. True while that entry is the current one.
   const noteInHistory = useRef(false);
 
   const active = pickActive(notes, activeId);
@@ -55,9 +56,22 @@ export default function Home() {
   }, [activeId]);
   useEffect(() => { if (removed.length) undoRef.current?.focus(); }, [removed]);
   useEffect(() => {
-    function onPop() {
-      if (!noteInHistory.current) return;
+    function onPop(event: PopStateEvent) {
+      // The entry we land on decides the pane: a note entry (Forward) opens its note again.
+      const state = event.state as { notesPane?: unknown; noteId?: unknown } | null;
+      const noteId = state?.notesPane === "note" && typeof state.noteId === "string" ? state.noteId : "";
+      if (noteId && noteStore.getSnapshot().some((note) => note.id === noteId)) {
+        noteInHistory.current = true;
+        if (shownView.current !== "note") focusAfterView.current = "title";
+        setActiveId(noteId);
+        setView("note");
+        return;
+      }
+      // Forward onto the entry of a note deleted since: show the list and make that entry a list entry.
+      if (noteId) window.history.replaceState(null, "");
+      else if (!noteInHistory.current) return;
       noteInHistory.current = false;
+      if (shownView.current === "list") return;
       focusAfterView.current = "row";
       setView("list");
     }
@@ -65,6 +79,13 @@ export default function Home() {
     return () => window.removeEventListener("popstate", onPop);
   }, []);
   useEffect(() => {
+    // The editor closed without going through history (Delete, or the open note was deleted in another
+    // tab): drop its history entry too, so the next Back leaves the list instead of doing nothing.
+    // Undo state is untouched; popstate then finds the list already shown.
+    if (view === "list" && noteInHistory.current) {
+      noteInHistory.current = false;
+      window.history.back();
+    }
     // A switch to the list that no handler asked for (the open note vanished) also lands on the list.
     const cameFromNote = shownView.current === "note";
     shownView.current = view;
@@ -93,13 +114,15 @@ export default function Home() {
     setQuery("");
     focusTitleNext.current = true;
     setActiveId(id);
-    showNote();
+    showNote(id);
     setAnnouncement("New note created.");
   }
-  function showNote() {
+  function showNote(noteId: string) {
     const phone = typeof window.matchMedia === "function" && window.matchMedia(PHONE).matches;
-    if (phone && !noteInHistory.current) {
-      window.history.pushState({ notesPane: "note" }, "");
+    if (phone) {
+      const state = { notesPane: "note", noteId };
+      if (noteInHistory.current) window.history.replaceState(state, "");
+      else window.history.pushState(state, "");
       noteInHistory.current = true;
     }
     setView("note");
@@ -107,7 +130,7 @@ export default function Home() {
   function open(id: string) {
     setActiveId(id);
     if (view !== "note") focusAfterView.current = "title";
-    showNote();
+    showNote(id);
   }
   function back() {
     // ‹ Notes uses the same history entry as the browser Back (popstate below switches the pane).
@@ -149,7 +172,7 @@ export default function Home() {
     // put focus in the restored note's title (the activeId effect does that once it renders).
     focusTitleNext.current = true;
     setActiveId(note.id);
-    showNote();
+    showNote(note.id);
     setRemoved([]);
     setToastFocused(false);
     setAnnouncement(batch.length === 1 ? `Restored “${note.title || "Untitled note"}”.` : `Restored ${batch.length} notes.`);

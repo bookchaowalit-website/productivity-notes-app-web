@@ -262,3 +262,81 @@ describe("review fixes", () => {
     expect(css).toContain(".as-editor-title { border-bottom: 1px solid var(--as-field-line); }");
   });
 });
+
+describe("phone history follows the pane", () => {
+  const view = () => $(".as-notes")!.getAttribute("data-view");
+  const pop = (state: unknown) => act(() => { window.dispatchEvent(new PopStateEvent("popstate", { state })); });
+  function phone() {
+    vi.stubGlobal("matchMedia", (query: string) => ({ matches: query === "(max-width: 760px)" }));
+    const push = vi.spyOn(window.history, "pushState");
+    const replace = vi.spyOn(window.history, "replaceState");
+    // Back lands on the list entry before the note entry (no note state).
+    const back = vi.spyOn(window.history, "back").mockImplementation(() => { window.dispatchEvent(new PopStateEvent("popstate", { state: null })); });
+    return { push, replace, back, restore: () => { push.mockRestore(); replace.mockRestore(); back.mockRestore(); vi.unstubAllGlobals(); } };
+  }
+
+  it("the note entry carries the note id, and Forward onto it reopens that note with focus in the title", () => {
+    const h = phone();
+    try {
+      act(() => { $<HTMLButtonElement>(".as-note-row")!.click(); });
+      const entry = h.push.mock.calls[0][0] as { notesPane: string; noteId: string };
+      expect(entry).toEqual({ notesPane: "note", noteId: noteStore.getSnapshot()[0].id });
+      pop(null);
+      expect(view()).toBe("list");
+      act(() => { (document.activeElement as HTMLElement | null)?.blur(); });
+      pop(entry);
+      expect(view()).toBe("note");
+      expect($<HTMLInputElement>("#note-title")!.value).toBe("Welcome");
+      expect(document.activeElement).toBe($("#note-title"));
+      // Back again returns to the list.
+      pop(null);
+      expect(view()).toBe("list");
+    } finally {
+      h.restore();
+    }
+  });
+
+  it("Forward onto the entry of a note deleted since stays on the list and turns the entry into a list entry", () => {
+    const h = phone();
+    try {
+      pop({ notesPane: "note", noteId: "gone" });
+      expect(view()).toBe("list");
+      expect(h.replace).toHaveBeenCalledWith(null, "");
+    } finally {
+      h.restore();
+    }
+  });
+
+  it("Delete from the open note drops its history entry, keeps Undo, and Undo adds a fresh entry", () => {
+    const h = phone();
+    try {
+      act(() => { $<HTMLButtonElement>(".as-note-row")!.click(); });
+      act(() => { button("Delete").click(); });
+      expect(h.back).toHaveBeenCalledTimes(1);
+      expect(view()).toBe("list");
+      expect(document.activeElement?.textContent).toBe("Undo");
+      act(() => { button("Undo").click(); });
+      expect(view()).toBe("note");
+      expect(h.push).toHaveBeenCalledTimes(2);
+    } finally {
+      h.restore();
+    }
+  });
+
+  it("another tab deleting the open note also drops its history entry", () => {
+    const h = phone();
+    try {
+      act(() => { $<HTMLButtonElement>(".as-note-row")!.click(); });
+      act(() => { noteStore.update(() => []); });
+      expect(view()).toBe("list");
+      expect(h.back).toHaveBeenCalledTimes(1);
+      // ‹ Notes on a later note uses history once, never a second stale back.
+      act(() => { button("New note").click(); });
+      act(() => { button("‹ Notes").click(); });
+      expect(h.back).toHaveBeenCalledTimes(2);
+      expect(view()).toBe("list");
+    } finally {
+      h.restore();
+    }
+  });
+});
