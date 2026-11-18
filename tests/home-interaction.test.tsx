@@ -24,6 +24,8 @@ const stored = () => JSON.parse(localStorage.getItem("notes-app-v1") ?? "[]") as
 
 beforeEach(() => {
   localStorage.clear();
+  // Each test starts on a plain (list) history entry.
+  window.history.replaceState(null, "");
   noteStore.update(() => SEED_NOTES);
   host = document.createElement("div");
   document.body.append(host);
@@ -337,6 +339,77 @@ describe("phone history follows the pane", () => {
       expect(view()).toBe("list");
     } finally {
       h.restore();
+    }
+  });
+});
+
+describe("history after reload and across the breakpoint", () => {
+  const view = () => $(".as-notes")!.getAttribute("data-view");
+  function remount() {
+    act(() => root.unmount());
+    root = createRoot(host);
+    act(() => root.render(<Home />));
+  }
+
+  it("a reload on a note entry shows that note, and the next open does not stack a second entry", () => {
+    vi.stubGlobal("matchMedia", (query: string) => ({ matches: query === "(max-width: 760px)" }));
+    const id = noteStore.getSnapshot()[0].id;
+    window.history.replaceState({ notesPane: "note", noteId: id }, "");
+    const push = vi.spyOn(window.history, "pushState");
+    const back = vi.spyOn(window.history, "back").mockImplementation(() => { window.dispatchEvent(new PopStateEvent("popstate", { state: null })); });
+    try {
+      act(() => { (document.activeElement as HTMLElement | null)?.blur(); });
+      remount();
+      expect(view()).toBe("note");
+      expect($<HTMLInputElement>("#note-title")!.value).toBe("Welcome");
+      // Restoring does not pull focus (no keyboard popping up on reload).
+      expect(document.activeElement).not.toBe($("#note-title"));
+      // ‹ Notes uses the restored entry: back to the list, no new entry pushed.
+      act(() => { button("‹ Notes").click(); });
+      expect(back).toHaveBeenCalledTimes(1);
+      expect(view()).toBe("list");
+      expect(push).not.toHaveBeenCalled();
+    } finally {
+      push.mockRestore();
+      back.mockRestore();
+      vi.unstubAllGlobals();
+    }
+  });
+
+  it("a reload on the entry of a note deleted since shows the list and clears the entry", () => {
+    vi.stubGlobal("matchMedia", (query: string) => ({ matches: query === "(max-width: 760px)" }));
+    window.history.replaceState({ notesPane: "note", noteId: "gone" }, "");
+    try {
+      remount();
+      expect(view()).toBe("list");
+      expect(window.history.state).toBeNull();
+    } finally {
+      vi.unstubAllGlobals();
+    }
+  });
+
+  it("narrowing to the phone layout with a note open adds its history entry once", () => {
+    let phone = false;
+    const listeners: (() => void)[] = [];
+    vi.stubGlobal("matchMedia", () => ({ get matches() { return phone; }, addEventListener: (_: string, cb: () => void) => listeners.push(cb), removeEventListener: () => {} }));
+    const push = vi.spyOn(window.history, "pushState");
+    try {
+      remount();
+      act(() => { $<HTMLButtonElement>(".as-note-row")!.click(); });
+      expect(push).not.toHaveBeenCalled();
+      phone = true;
+      act(() => { listeners.forEach((cb) => cb()); });
+      expect(push).toHaveBeenCalledTimes(1);
+      expect(push.mock.calls[0][0]).toEqual({ notesPane: "note", noteId: noteStore.getSnapshot()[0].id });
+      // Another change event while the entry exists adds nothing.
+      act(() => { listeners.forEach((cb) => cb()); });
+      expect(push).toHaveBeenCalledTimes(1);
+      // Back now returns to the list.
+      act(() => { window.dispatchEvent(new PopStateEvent("popstate", { state: null })); });
+      expect(view()).toBe("list");
+    } finally {
+      push.mockRestore();
+      vi.unstubAllGlobals();
     }
   });
 });

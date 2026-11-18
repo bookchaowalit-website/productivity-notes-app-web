@@ -7,6 +7,12 @@ import { createNote, dateLabel, deleteNote, filterNotes, noteCount, noteStore, p
 const noop = () => () => {};
 // Matches the CSS breakpoint where only one pane shows.
 const PHONE = "(max-width: 760px)";
+const isPhone = () => typeof window.matchMedia === "function" && window.matchMedia(PHONE).matches;
+// The one history model: on phones the open note is a history entry { notesPane: "note", noteId }.
+const entryNoteId = (state: unknown) => {
+  const entry = state as { notesPane?: unknown; noteId?: unknown } | null;
+  return entry?.notesPane === "note" && typeof entry.noteId === "string" ? entry.noteId : "";
+};
 const deletedLabel = (batch: Note[]) => (batch.length === 1 ? `Deleted “${batch[0].title || "Untitled note"}”` : `Deleted ${batch.length} notes`);
 
 export default function Home() {
@@ -36,6 +42,14 @@ export default function Home() {
   // Android Back returns to the list (and its search) instead of leaving the app, and Forward reopens
   // that note. True while that entry is the current one.
   const noteInHistory = useRef(false);
+  const activeIdRef = useRef("");
+  // Make the open note the current history entry: add one, or retarget the one already there.
+  const recordNote = (noteId: string) => {
+    const state = { notesPane: "note", noteId };
+    if (noteInHistory.current) window.history.replaceState(state, "");
+    else window.history.pushState(state, "");
+    noteInHistory.current = true;
+  };
 
   const active = pickActive(notes, activeId);
   // The open note can vanish under us (deleted in another tab). Go back to the list for real, even
@@ -55,14 +69,15 @@ export default function Home() {
     titleRef.current?.select();
   }, [activeId]);
   useEffect(() => { if (removed.length) undoRef.current?.focus(); }, [removed]);
+  useEffect(() => { activeIdRef.current = activeId; }, [activeId]);
   useEffect(() => {
-    function onPop(event: PopStateEvent) {
-      // The entry we land on decides the pane: a note entry (Forward) opens its note again.
-      const state = event.state as { notesPane?: unknown; noteId?: unknown } | null;
-      const noteId = state?.notesPane === "note" && typeof state.noteId === "string" ? state.noteId : "";
+    // The entry we land on decides the pane: a note entry (Forward, or the current entry after a
+    // reload) opens its note again; any other entry shows the list.
+    function showEntry(state: unknown, moveFocus: boolean) {
+      const noteId = entryNoteId(state);
       if (noteId && noteStore.getSnapshot().some((note) => note.id === noteId)) {
         noteInHistory.current = true;
-        if (shownView.current !== "note") focusAfterView.current = "title";
+        if (moveFocus && shownView.current !== "note") focusAfterView.current = "title";
         setActiveId(noteId);
         setView("note");
         return;
@@ -75,8 +90,19 @@ export default function Home() {
       focusAfterView.current = "row";
       setView("list");
     }
+    const onPop = (event: PopStateEvent) => showEntry(event.state, true);
+    // Reloaded on a note entry: show that note (without grabbing focus) so Back still goes to the list.
+    showEntry(window.history.state, false);
+    // Narrowed past the breakpoint (rotation, resize) with a note open: the list is now hidden, so
+    // give the open note its history entry, or Back would leave the app.
+    const media = typeof window.matchMedia === "function" ? window.matchMedia(PHONE) : null;
+    const onMedia = () => { if (isPhone() && shownView.current === "note" && !noteInHistory.current) recordNote(activeIdRef.current); };
     window.addEventListener("popstate", onPop);
-    return () => window.removeEventListener("popstate", onPop);
+    media?.addEventListener?.("change", onMedia);
+    return () => {
+      window.removeEventListener("popstate", onPop);
+      media?.removeEventListener?.("change", onMedia);
+    };
   }, []);
   useEffect(() => {
     // The editor closed without going through history (Delete, or the open note was deleted in another
@@ -118,13 +144,7 @@ export default function Home() {
     setAnnouncement("New note created.");
   }
   function showNote(noteId: string) {
-    const phone = typeof window.matchMedia === "function" && window.matchMedia(PHONE).matches;
-    if (phone) {
-      const state = { notesPane: "note", noteId };
-      if (noteInHistory.current) window.history.replaceState(state, "");
-      else window.history.pushState(state, "");
-      noteInHistory.current = true;
-    }
+    if (isPhone()) recordNote(noteId);
     setView("note");
   }
   function open(id: string) {
