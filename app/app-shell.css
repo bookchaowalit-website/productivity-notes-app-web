@@ -193,8 +193,9 @@
 .as-back { visibility: hidden; }
 .as-editor-title { width: 100%; padding: 20px 24px 4px; border: 0; background: transparent; font-size: 26px; font-weight: 700; letter-spacing: -.01em; }
 .as-editor-body { flex: 1; width: 100%; min-height: 360px; padding: 8px 24px 24px; border: 0; background: transparent; font-size: 17px; line-height: 1.6; resize: none; }
-.as-editor-title:focus-visible, .as-editor-body:focus-visible { outline: none; }
-.as-editor:has(:focus-visible) { border-color: var(--as-focus); box-shadow: 0 0 0 3px color-mix(in srgb, var(--as-focus) 35%, transparent); }
+/* Each field shows its own solid 3px ring, drawn inside (the card clips overflow), so Tab from the
+   title to the text visibly moves to the field that will take the typing. */
+.as-editor-title:focus-visible, .as-editor-body:focus-visible { outline: 3px solid var(--as-focus); outline-offset: -3px; }
 .as-editor-empty { min-height: 240px; display: grid; place-content: center; }
 @media (max-width: 760px) {
   .as-notes { grid-template-columns: 1fr; }

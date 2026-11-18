@@ -186,4 +186,28 @@ describe("review fixes", () => {
     expect($(".as-notes")!.getAttribute("data-view")).toBe("list");
     expect(titles()).toEqual(["From another tab"]);
   });
+
+  it("goes back to the list when another tab deletes the open note, even if other notes remain", () => {
+    act(() => { button("New note").click(); });
+    type($<HTMLInputElement>("#note-title")!, "Mine");
+    expect($(".as-notes")!.getAttribute("data-view")).toBe("note");
+    act(() => { noteStore.update((current) => current.filter((note) => note.title !== "Mine")); });
+    expect($(".as-notes")!.getAttribute("data-view")).toBe("list");
+    expect(titles()).toEqual(["Welcome"]);
+  });
+
+  it("the main landmark holds both the list and the editor; the editor is a section", () => {
+    const main = host.querySelectorAll("main");
+    expect(main).toHaveLength(1);
+    expect(main[0].id).toBe("main");
+    expect(main[0].contains($(".as-note-list"))).toBe(true);
+    expect($(".as-note-pane")!.tagName).toBe("SECTION");
+  });
+
+  it("title and body each draw their own solid 3px focus ring", async () => {
+    const { readFileSync } = await import("node:fs");
+    const css = readFileSync(`${process.cwd()}/app/app-shell.css`, "utf8");
+    expect(css).toContain(".as-editor-title:focus-visible, .as-editor-body:focus-visible { outline: 3px solid var(--as-focus); outline-offset: -3px; }");
+    expect(css).not.toContain("color-mix(in srgb, var(--as-focus) 35%");
+  });
 });

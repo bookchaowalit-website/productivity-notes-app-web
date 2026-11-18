@@ -29,11 +29,16 @@ export default function Home() {
   // On phones the pane that held focus is hidden when the view switches; move focus to the pane
   // now shown (the title when a note opens, that note's row when going back to the list).
   const focusAfterView = useRef<"title" | "row" | null>(null);
+  const shownView = useRef<"list" | "note">("list");
 
   const active = pickActive(notes, activeId);
-  // The open note can vanish under us (deleted in another tab). Go back to the list for real, so a
-  // note created later in another tab does not suddenly open over the list the user is searching.
-  if (!active && view === "note") setView("list");
+  // The open note can vanish under us (deleted in another tab). Go back to the list for real, even
+  // when other notes remain: otherwise the editor would quietly swap to another note under the
+  // user's cursor (typing would land in the wrong note), or a note created later in another tab
+  // would open over the list the user is searching.
+  if (view === "note" && !notes.some((note) => note.id === activeId)) {
+    setView("list");
+  }
   const filtered = filterNotes(notes, query);
   const when = (timestamp: number) => (ready ? dateLabel(timestamp) : "");
 
@@ -45,7 +50,10 @@ export default function Home() {
   }, [activeId]);
   useEffect(() => { if (removed.length) undoRef.current?.focus(); }, [removed]);
   useEffect(() => {
-    const target = focusAfterView.current;
+    // A switch to the list that no handler asked for (the open note vanished) also lands on the list.
+    const cameFromNote = shownView.current === "note";
+    shownView.current = view;
+    const target = focusAfterView.current ?? (view === "list" && cameFromNote ? "row" : null);
     focusAfterView.current = null;
     // Only when focus was really lost: on wide screens both panes stay visible, so leave it alone.
     const current = document.activeElement as HTMLElement | null;
@@ -127,7 +135,7 @@ export default function Home() {
       {/* With no note open (e.g. the last one was deleted in another tab) phones fall back to the list,
           which always has New note; otherwise the empty pane would have no way back. */}
       {/* The skip target wraps both panes: on phones one of them is display:none, so <main> alone could be hidden. */}
-      <div id="main" tabIndex={-1} className="as-body as-notes" data-view={active ? view : "list"}>
+      <main id="main" tabIndex={-1} className="as-body as-notes" data-view={active ? view : "list"}>
         <aside className="as-side as-note-list" aria-label="Notes">
           <div className="as-note-list-head">
             <h2>{ready ? noteCount(notes.length) : "Notes"}</h2>
@@ -156,7 +164,7 @@ export default function Home() {
           )}
         </aside>
 
-        <main className="as-main as-note-pane">
+        <section className="as-main as-note-pane" aria-label="Note editor">
           {active ? (
             <article className="as-editor" aria-label="Note">
               <div className="as-editor-bar">
@@ -173,8 +181,8 @@ export default function Home() {
             <div className="as-list as-empty as-editor-empty"><strong>No note open</strong>Pick a note from the list or press New note.</div>
           )}
           <p className="as-note">Plain text, saved in this browser only. Nothing is uploaded or synced.</p>
-        </main>
-      </div>
+        </section>
+      </main>
 
       <p className="as-sr" role="status" aria-live="polite">{announcement}</p>
       {removed.length ? (
