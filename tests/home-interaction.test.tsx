@@ -142,4 +142,48 @@ describe("review fixes", () => {
     expect(target.contains($(".as-note-list"))).toBe(true);
     expect(target.contains($(".as-note-pane"))).toBe(true);
   });
+
+  it("two deletes inside the Undo window are one batch: Undo restores both, and the timer restarts", () => {
+    vi.useFakeTimers();
+    act(() => { button("New note").click(); });
+    type($<HTMLInputElement>("#note-title")!, "Groceries");
+    act(() => { button("Delete").click(); });
+    expect($(".as-toast span")!.textContent).toBe("Deleted “Groceries”");
+    act(() => { vi.advanceTimersByTime(4000); });
+    act(() => { (document.activeElement as HTMLElement).blur(); });
+    act(() => { $<HTMLButtonElement>(".as-note-row")!.click(); });
+    act(() => { button("Delete").click(); });
+    expect(titles()).toEqual([]);
+    expect($(".as-toast span")!.textContent).toBe("Deleted 2 notes");
+    expect(host.querySelector('[role="status"]')!.textContent).toContain("Deleted 2 notes");
+    const undo = button("Undo");
+    expect(undo.getAttribute("aria-label")).toMatch(/^Undo/);
+    expect(undo.getAttribute("aria-label")).toBe("Undo delete of 2 notes");
+    // 4 s after the first delete plus 4 s after the second: still open, because the second restarted it.
+    act(() => { undo.blur(); });
+    act(() => { vi.advanceTimersByTime(4000); });
+    expect($(".as-toast")).not.toBeNull();
+    act(() => { button("Undo").click(); });
+    expect(titles().sort()).toEqual(["Groceries", "Welcome"]);
+    expect(stored().map((n) => n.title).sort()).toEqual(["Groceries", "Welcome"]);
+    expect(host.querySelector('[role="status"]')!.textContent).toBe("Restored 2 notes.");
+  });
+
+  it("Undo restores the version that was deleted, including an edit saved by another tab", () => {
+    // Another tab edits the note in storage; this tab has not re-rendered yet when Delete is pressed.
+    localStorage.setItem("notes-app-v1", JSON.stringify([{ ...SEED_NOTES[0], body: "Edited elsewhere", updatedAt: 5 }]));
+    act(() => { button("Delete").click(); });
+    act(() => { button("Undo").click(); });
+    expect(stored()[0]).toMatchObject({ title: "Welcome", body: "Edited elsewhere", updatedAt: 5 });
+    expect($<HTMLTextAreaElement>("#note-body")!.value).toBe("Edited elsewhere");
+  });
+
+  it("stays on the list when another tab empties the notes and later creates one", () => {
+    act(() => { $<HTMLButtonElement>(".as-note-row")!.click(); });
+    act(() => { noteStore.update(() => []); });
+    expect($(".as-notes")!.getAttribute("data-view")).toBe("list");
+    act(() => { noteStore.update(() => [{ id: "x", title: "From another tab", body: "", updatedAt: 9 }]); });
+    expect($(".as-notes")!.getAttribute("data-view")).toBe("list");
+    expect(titles()).toEqual(["From another tab"]);
+  });
 });

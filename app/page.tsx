@@ -5,6 +5,7 @@ import { AppFoot, AppTop, PlusIcon } from "@/components/app-shell";
 import { createNote, dateLabel, deleteNote, filterNotes, noteCount, noteStore, pickActive, previewOf, restoreNote, updateNote, type Note } from "@/lib/notes";
 
 const noop = () => () => {};
+const deletedLabel = (batch: Note[]) => (batch.length === 1 ? `Deleted “${batch[0].title || "Untitled note"}”` : `Deleted ${batch.length} notes`);
 
 export default function Home() {
   const notes = useSyncExternalStore(noteStore.subscribe, noteStore.getSnapshot, noteStore.getServerSnapshot);
@@ -14,7 +15,11 @@ export default function Home() {
   const [query, setQuery] = useState("");
   // On phones one pane shows at a time: the list, or the open note with a back button.
   const [view, setView] = useState<"list" | "note">("list");
-  const [removed, setRemoved] = useState<Note | null>(null);
+  // Every delete still inside the Undo window: one Undo puts them all back.
+  const [removed, setRemovedState] = useState<Note[]>([]);
+  // The latest batch, so two deletes before a re-render still both land in it.
+  const removedRef = useRef<Note[]>([]);
+  const setRemoved = (batch: Note[]) => { removedRef.current = batch; setRemovedState(batch); };
   const [toastFocused, setToastFocused] = useState(false);
   const [announcement, setAnnouncement] = useState("");
   const titleRef = useRef<HTMLInputElement>(null);
@@ -26,6 +31,9 @@ export default function Home() {
   const focusAfterView = useRef<"title" | "row" | null>(null);
 
   const active = pickActive(notes, activeId);
+  // The open note can vanish under us (deleted in another tab). Go back to the list for real, so a
+  // note created later in another tab does not suddenly open over the list the user is searching.
+  if (!active && view === "note") setView("list");
   const filtered = filterNotes(notes, query);
   const when = (timestamp: number) => (ready ? dateLabel(timestamp) : "");
 
@@ -35,7 +43,7 @@ export default function Home() {
     titleRef.current?.focus();
     titleRef.current?.select();
   }, [activeId]);
-  useEffect(() => { if (removed) undoRef.current?.focus(); }, [removed]);
+  useEffect(() => { if (removed.length) undoRef.current?.focus(); }, [removed]);
   useEffect(() => {
     const target = focusAfterView.current;
     focusAfterView.current = null;
@@ -45,10 +53,10 @@ export default function Home() {
     if (target === "title") titleRef.current?.focus();
     if (target === "row") (document.querySelector<HTMLButtonElement>('.as-note-row[aria-current="true"]') ?? newRef.current)?.focus();
   }, [view]);
-  // The toast closes after 6 s, but never while it holds focus.
+  // The toast closes 6 s after the latest delete (each delete restarts it), but never while it holds focus.
   useEffect(() => {
-    if (!removed || toastFocused) return;
-    const timer = window.setTimeout(() => setRemoved(null), 6000);
+    if (!removed.length || toastFocused) return;
+    const timer = window.setTimeout(() => { removedRef.current = []; setRemovedState([]); }, 6000);
     return () => window.clearTimeout(timer);
   }, [removed, toastFocused]);
 
@@ -76,30 +84,39 @@ export default function Home() {
   }
   function remove() {
     if (!active) return;
-    noteStore.update((current) => deleteNote(current, active.id));
-    setRemoved(active);
+    // Keep the note as stored at the moment of deleting (another tab may have edited it since this
+    // render), so Undo brings back exactly what was deleted.
+    let deleted: Note | undefined;
+    noteStore.update((current) => {
+      deleted = current.find((note) => note.id === active.id);
+      return deleteNote(current, active.id);
+    });
     setActiveId("");
     setView("list");
-    setAnnouncement(`Deleted “${active.title || "Untitled note"}”. Undo is available for a few seconds.`);
+    if (!deleted) return;
+    const batch = [...removedRef.current, deleted];
+    setRemoved(batch);
+    setAnnouncement(`${deletedLabel(batch)}. Undo is available for a few seconds.`);
   }
   function closeToast() {
-    setRemoved(null);
+    setRemoved([]);
     setToastFocused(false);
     // On phones only one pane shows: with a note open the list (and New note) is display:none.
     (active && view === "note" ? titleRef : newRef).current?.focus();
   }
   function undo() {
-    if (!removed) return;
-    const note = removed;
-    noteStore.update((current) => restoreNote(current, note));
-    // Reopen it: remove() switched phones to the list, so show the editor again and put focus
-    // in the restored note's title (the activeId effect does that once it renders).
+    const batch = removedRef.current;
+    if (!batch.length) return;
+    const note = batch[batch.length - 1];
+    noteStore.update((current) => batch.reduce(restoreNote, current));
+    // Reopen the last one deleted: remove() switched phones to the list, so show the editor again and
+    // put focus in the restored note's title (the activeId effect does that once it renders).
     focusTitleNext.current = true;
     setActiveId(note.id);
     setView("note");
-    setRemoved(null);
+    setRemoved([]);
     setToastFocused(false);
-    setAnnouncement(`Restored “${note.title || "Untitled note"}”.`);
+    setAnnouncement(batch.length === 1 ? `Restored “${note.title || "Untitled note"}”.` : `Restored ${batch.length} notes.`);
   }
 
   return (
@@ -160,7 +177,7 @@ export default function Home() {
       </div>
 
       <p className="as-sr" role="status" aria-live="polite">{announcement}</p>
-      {removed ? (
+      {removed.length ? (
         <div
           className="as-toast"
           role="group"
@@ -169,8 +186,8 @@ export default function Home() {
           onBlur={(event) => { if (!event.currentTarget.contains(event.relatedTarget as Node | null)) setToastFocused(false); }}
           onKeyDown={(event) => { if (event.key === "Escape") closeToast(); }}
         >
-          <span>Deleted “{removed.title || "Untitled note"}”</span>
-          <button ref={undoRef} type="button" className="as-plain" onClick={undo}>Undo</button>
+          <span>{deletedLabel(removed)}</span>
+          <button ref={undoRef} type="button" className="as-plain" onClick={undo} aria-label={removed.length === 1 ? "Undo delete" : `Undo delete of ${removed.length} notes`}>Undo</button>
         </div>
       ) : null}
 
