@@ -48,7 +48,16 @@ export function restoreNote(notes: Note[], note: Note): Note[] {
 
 /** First non-empty line of the body, for the one-line preview under a title in the list. */
 export function previewOf(body: string): string {
-  return body.split("\n").map((line) => line.trim()).find(Boolean) ?? "No additional text";
+  // Stop at the first line with text: long pasted bodies are previewed on every keystroke.
+  let start = 0;
+  while (start <= body.length) {
+    const end = body.indexOf("\n", start);
+    const line = body.slice(start, end < 0 ? body.length : end).trim();
+    if (line) return line;
+    if (end < 0) break;
+    start = end + 1;
+  }
+  return "No additional text";
 }
 
 export function noteCount(count: number): string {

@@ -32,3 +32,24 @@ A portfolio visitor who wants a quiet scratch notebook in one browser.
 ## Boundaries
 
 - Browser-only apart from the stateless `/api/mcp` route.
+
+## Known limits
+
+Phone history (`lib/notes-history.ts`): below 760px the open note is a history entry
+(`{ notesPane: "note", noteId }` beside the Next.js router state), so Back returns to the list and
+Forward reopens the note. These races are unlikely and left as they are (checked 2026-11-18):
+
+- **Back that never lands.** Delete (or a note deleted in another tab) steps back with
+  `history.back()`, which is asynchronous. A note opened before its `popstate` arrives is queued and
+  recorded afterwards; if the browser drops that `popstate` (for example, the tab is frozen mid-step),
+  the queued entry is never written and the next Back leaves the app instead of returning to the list.
+- **Dead Forward stop.** A deleted note's entry stays in the forward history. Forward onto it shows
+  the list and steps straight back, so that Forward appears to do nothing (no second list entry is
+  created).
+- **User Back racing our Back.** If the user presses Back while the app's own `history.back()` is
+  still pending, both steps run and the app may leave by one entry more than expected.
+- **Other tabs.** History is per tab. A note deleted or created in another tab is seen through
+  storage events, not history, so that tab's Back/Forward stops may point at notes that are gone
+  (handled as the dead Forward stop above).
+- **Breakpoint flips during a pending Back.** Crossing the 760px breakpoint while a Back is pending
+  keeps the pane that holds focus, but its entry is written only once the Back lands.

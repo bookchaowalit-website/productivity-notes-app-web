@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
-import { createNotesHistory, entryNoteId, withoutNote } from "@/lib/notes-history";
+import { createNotesHistory, entryNoteId } from "@/lib/notes-history";
 
 function fakeHistory(state: unknown = null) {
   const h = {
@@ -13,16 +13,12 @@ function fakeHistory(state: unknown = null) {
 const all = () => true;
 const none = () => false;
 
-describe("entryNoteId / withoutNote", () => {
+describe("entryNoteId", () => {
   it("reads only our note entries", () => {
     expect(entryNoteId({ notesPane: "note", noteId: "a" })).toBe("a");
     expect(entryNoteId({ notesPane: "list", noteId: "a" })).toBe("");
     expect(entryNoteId({ notesPane: "note", noteId: 3 })).toBe("");
     expect(entryNoteId(null)).toBe("");
-  });
-  it("clears our fields and keeps the rest", () => {
-    expect(withoutNote({ __NA: true, notesPane: "note", noteId: "a" })).toEqual({ __NA: true, notesPane: undefined, noteId: undefined });
-    expect(withoutNote(null)).toEqual({ notesPane: undefined, noteId: undefined });
   });
 });
 
@@ -64,14 +60,29 @@ describe("createNotesHistory", () => {
     expect(nav.inEntry).toBe(false);
   });
 
-  it("land: a live note entry opens it; a deleted one becomes a list entry; foreign entries are ignored", () => {
+  it("land: a live note entry opens it; a deleted one steps back off it; foreign entries are ignored", () => {
     const h = fakeHistory();
     const nav = createNotesHistory(h as unknown as History);
     expect(nav.land({ notesPane: "note", noteId: "a" }, all)).toEqual({ show: "note", noteId: "a" });
     expect(nav.land(null, all)).toEqual({ show: "list" });
     expect(nav.land(null, all)).toBeNull();
     expect(nav.land({ __NA: true, notesPane: "note", noteId: "gone" }, none)).toEqual({ show: "list" });
-    expect(h.replaceState).toHaveBeenCalledWith({ __NA: true, notesPane: undefined, noteId: undefined }, "");
+    // No second list entry: history steps back to the list entry below, state untouched.
+    expect(h.replaceState).not.toHaveBeenCalled();
+    expect(h.back).toHaveBeenCalledTimes(1);
+    expect(nav.inEntry).toBe(false);
+    // That Back's popstate is ours: nothing else to show.
+    expect(nav.land(null, all)).toBeNull();
+  });
+
+  it("a note opened while bouncing off a deleted note's entry is written once the bounce lands", () => {
+    const h = fakeHistory();
+    const nav = createNotesHistory(h as unknown as History);
+    nav.land({ notesPane: "note", noteId: "gone" }, none);
+    nav.record("b");
+    expect(h.pushState).not.toHaveBeenCalled();
+    nav.land(null, all);
+    expect(h.pushState).toHaveBeenCalledWith({ notesPane: "note", noteId: "b" }, "");
   });
 
   it("closing the editor before the pending Back lands cancels the queued entry", () => {

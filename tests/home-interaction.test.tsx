@@ -298,12 +298,13 @@ describe("phone history follows the pane", () => {
     }
   });
 
-  it("Forward onto the entry of a note deleted since stays on the list and turns the entry into a list entry", () => {
+  it("Forward onto the entry of a note deleted since stays on the list and steps back off it (no second list entry)", () => {
     const h = phone();
     try {
       pop({ notesPane: "note", noteId: "gone" });
       expect(view()).toBe("list");
-      expect(h.replace).toHaveBeenCalledWith({ notesPane: undefined, noteId: undefined }, "");
+      expect(h.back).toHaveBeenCalledTimes(1);
+      expect(h.replace).not.toHaveBeenCalled();
     } finally {
       h.restore();
     }
@@ -378,14 +379,19 @@ describe("history after reload and across the breakpoint", () => {
     }
   });
 
-  it("a reload on the entry of a note deleted since shows the list and clears the entry", () => {
+  it("a reload on the entry of a note deleted since shows the list and steps back to the list entry", () => {
     vi.stubGlobal("matchMedia", (query: string) => ({ matches: query === "(max-width: 760px)" }));
     window.history.replaceState({ notesPane: "note", noteId: "gone" }, "");
+    const back = vi.spyOn(window.history, "back").mockImplementation(() => {});
+    const replace = vi.spyOn(window.history, "replaceState");
     try {
       remount();
       expect(view()).toBe("list");
-      expect(window.history.state).toEqual({ notesPane: undefined, noteId: undefined });
+      expect(back).toHaveBeenCalledTimes(1);
+      expect(replace).not.toHaveBeenCalled();
     } finally {
+      back.mockRestore();
+      replace.mockRestore();
       vi.unstubAllGlobals();
     }
   });
@@ -495,14 +501,16 @@ describe("history: queued entry, router state, breakpoint keeps the edited note"
     }
   });
 
-  it("clearing a deleted note's entry keeps the router's state", () => {
+  it("leaving a deleted note's entry never rewrites the router's state", () => {
     vi.stubGlobal("matchMedia", (query: string) => ({ matches: query === "(max-width: 760px)" }));
     window.history.replaceState({ __NA: true, notesPane: "note", noteId: "gone" }, "");
+    const back = vi.spyOn(window.history, "back").mockImplementation(() => {});
     try {
       remount();
       expect(view()).toBe("list");
-      expect(window.history.state).toEqual({ __NA: true, notesPane: undefined, noteId: undefined });
+      expect(window.history.state).toEqual({ __NA: true, notesPane: "note", noteId: "gone" });
     } finally {
+      back.mockRestore();
       vi.unstubAllGlobals();
     }
   });

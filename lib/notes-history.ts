@@ -13,11 +13,6 @@ export function entryNoteId(state: unknown): string {
   return entry?.notesPane === "note" && typeof entry.noteId === "string" ? entry.noteId : "";
 }
 
-/** The state with our note fields cleared and everything else (router state) kept. */
-export function withoutNote(state: unknown): Record<string, unknown> {
-  return { ...(state && typeof state === "object" ? state : {}), notesPane: undefined, noteId: undefined };
-}
-
 export function createNotesHistory(history: HistoryLike) {
   // True while the current entry is our note entry.
   let inEntry = false;
@@ -68,11 +63,16 @@ export function createNotesHistory(history: HistoryLike) {
         return { show: "note", noteId };
       }
       if (noteId) {
-        // The entry of a note deleted since: turn it into a list entry, keeping the router state.
-        history.replaceState(withoutNote(state), "");
-      } else if (!inEntry) {
-        return null;
+        // The entry of a note deleted since (Forward after a Delete, or a reload on it). Turning it
+        // into a list entry would leave two list entries in a row (Back would seem to do nothing), so
+        // step back off it onto the list entry below; it stays as a dead Forward stop that bounces.
+        inEntry = false;
+        pendingBack = true;
+        queued = "";
+        history.back();
+        return { show: "list" };
       }
+      if (!inEntry) return null;
       inEntry = false;
       return { show: "list" };
     },

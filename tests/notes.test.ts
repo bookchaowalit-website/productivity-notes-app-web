@@ -82,6 +82,9 @@ describe("App shell helpers", () => {
   it("previews the first non-empty body line", () => {
     expect(previewOf(a.body)).toBe("first line");
     expect(previewOf("   \n ")).toBe("No additional text");
+    expect(previewOf("")).toBe("No additional text");
+    expect(previewOf("\n\n  second  \nthird")).toBe("second");
+    expect(previewOf("only")).toBe("only");
   });
   it("restores a deleted note once", () => {
     expect(restoreNote([], a)).toEqual([a]);
