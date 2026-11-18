@@ -364,6 +364,8 @@ describe("history after reload and across the breakpoint", () => {
       expect($<HTMLInputElement>("#note-title")!.value).toBe("Welcome");
       // Restoring does not pull focus (no keyboard popping up on reload).
       expect(document.activeElement).not.toBe($("#note-title"));
+      // History does not move while restoring.
+      expect(back).not.toHaveBeenCalled();
       // ‹ Notes uses the restored entry: back to the list, no new entry pushed.
       act(() => { button("‹ Notes").click(); });
       expect(back).toHaveBeenCalledTimes(1);
@@ -409,6 +411,50 @@ describe("history after reload and across the breakpoint", () => {
       expect(view()).toBe("list");
     } finally {
       push.mockRestore();
+      vi.unstubAllGlobals();
+    }
+  });
+});
+
+describe("history stays put for skip link and wide-screen switches", () => {
+  it("Skip to content focuses main without adding a history entry or changing the hash", () => {
+    const push = vi.spyOn(window.history, "pushState");
+    const before = window.location.hash;
+    try {
+      const link = $<HTMLAnchorElement>(".as-skip")!;
+      const event = new MouseEvent("click", { bubbles: true, cancelable: true });
+      act(() => { link.dispatchEvent(event); });
+      expect(event.defaultPrevented).toBe(true);
+      expect(document.activeElement).toBe($("#main"));
+      expect($("#main")!.getAttribute("tabindex")).toBe("-1");
+      expect(window.location.hash).toBe(before);
+      expect(push).not.toHaveBeenCalled();
+    } finally {
+      push.mockRestore();
+    }
+  });
+
+  it("switching notes on a wide screen retargets the existing note entry, without a new one", () => {
+    let phone = true;
+    vi.stubGlobal("matchMedia", () => ({ get matches() { return phone; } }));
+    const push = vi.spyOn(window.history, "pushState");
+    const replace = vi.spyOn(window.history, "replaceState");
+    try {
+      act(() => { button("New note").click(); });
+      type($<HTMLInputElement>("#note-title")!, "B");
+      const [b, a] = noteStore.getSnapshot();
+      act(() => { (document.querySelectorAll<HTMLButtonElement>(".as-note-row")[1]).click(); });
+      // Phone: New note pushed; opening A while the note entry exists retargets it.
+      expect(push).toHaveBeenCalledTimes(1);
+      expect(window.history.state).toEqual({ notesPane: "note", noteId: a.id });
+      phone = false;
+      act(() => { (document.querySelectorAll<HTMLButtonElement>(".as-note-row")[0]).click(); });
+      expect(push).toHaveBeenCalledTimes(1);
+      expect(replace).toHaveBeenLastCalledWith({ notesPane: "note", noteId: b.id }, "");
+      expect(window.history.state).toEqual({ notesPane: "note", noteId: b.id });
+    } finally {
+      push.mockRestore();
+      replace.mockRestore();
       vi.unstubAllGlobals();
     }
   });

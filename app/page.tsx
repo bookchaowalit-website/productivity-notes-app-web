@@ -107,13 +107,14 @@ export default function Home() {
   useEffect(() => {
     // The editor closed without going through history (Delete, or the open note was deleted in another
     // tab): drop its history entry too, so the next Back leaves the list instead of doing nothing.
-    // Undo state is untouched; popstate then finds the list already shown.
-    if (view === "list" && noteInHistory.current) {
+    // Undo state is untouched; popstate then finds the list already shown. Only on a real editor →
+    // list switch: on mount (a reload restoring a note entry) history must not move.
+    const cameFromNote = shownView.current === "note";
+    if (view === "list" && cameFromNote && noteInHistory.current) {
       noteInHistory.current = false;
       window.history.back();
     }
     // A switch to the list that no handler asked for (the open note vanished) also lands on the list.
-    const cameFromNote = shownView.current === "note";
     shownView.current = view;
     const target = focusAfterView.current ?? (view === "list" && cameFromNote ? "row" : null);
     focusAfterView.current = null;
@@ -144,7 +145,8 @@ export default function Home() {
     setAnnouncement("New note created.");
   }
   function showNote(noteId: string) {
-    if (isPhone()) recordNote(noteId);
+    // Wide screens add no entry, but an entry already there (made on a phone) follows the note shown.
+    if (isPhone() || noteInHistory.current) recordNote(noteId);
     setView("note");
   }
   function open(id: string) {
@@ -200,7 +202,8 @@ export default function Home() {
 
   return (
     <div className="as">
-      <a className="as-skip" href="#main">Skip to content</a>
+      {/* Focus <main> without following the #main hash: that would add a history entry above the note's. */}
+      <a className="as-skip" href="#main" onClick={(event) => { event.preventDefault(); document.getElementById("main")?.focus(); }}>Skip to content</a>
       <AppTop name="Notes" tagline="Saved in this browser · no sync" />
 
       {/* With no note open (e.g. the last one was deleted in another tab) phones fall back to the list,
