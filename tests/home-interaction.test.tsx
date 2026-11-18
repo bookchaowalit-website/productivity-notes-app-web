@@ -303,7 +303,7 @@ describe("phone history follows the pane", () => {
     try {
       pop({ notesPane: "note", noteId: "gone" });
       expect(view()).toBe("list");
-      expect(h.replace).toHaveBeenCalledWith(null, "");
+      expect(h.replace).toHaveBeenCalledWith({ notesPane: undefined, noteId: undefined }, "");
     } finally {
       h.restore();
     }
@@ -384,7 +384,7 @@ describe("history after reload and across the breakpoint", () => {
     try {
       remount();
       expect(view()).toBe("list");
-      expect(window.history.state).toBeNull();
+      expect(window.history.state).toEqual({ notesPane: undefined, noteId: undefined });
     } finally {
       vi.unstubAllGlobals();
     }
@@ -455,6 +455,93 @@ describe("history stays put for skip link and wide-screen switches", () => {
     } finally {
       push.mockRestore();
       replace.mockRestore();
+      vi.unstubAllGlobals();
+    }
+  });
+});
+
+describe("history: queued entry, router state, breakpoint keeps the edited note", () => {
+  const view = () => $(".as-notes")!.getAttribute("data-view");
+  function remount() {
+    act(() => root.unmount());
+    root = createRoot(host);
+    act(() => root.render(<Home />));
+  }
+
+  it("a note opened before Delete's Back has landed is recorded only after popstate", () => {
+    vi.stubGlobal("matchMedia", (query: string) => ({ matches: query === "(max-width: 760px)" }));
+    const push = vi.spyOn(window.history, "pushState");
+    // Back is asynchronous: hold its popstate until the test releases it.
+    const back = vi.spyOn(window.history, "back").mockImplementation(() => {});
+    try {
+      act(() => { button("New note").click(); });
+      type($<HTMLInputElement>("#note-title")!, "Doomed");
+      expect(push).toHaveBeenCalledTimes(1);
+      act(() => { button("Delete").click(); });
+      expect(back).toHaveBeenCalledTimes(1);
+      // Undo before Back lands: the editor opens, but no entry is written on top of the old one yet.
+      act(() => { button("Undo").click(); });
+      expect(view()).toBe("note");
+      expect(push).toHaveBeenCalledTimes(1);
+      act(() => { window.dispatchEvent(new PopStateEvent("popstate", { state: null })); });
+      // Back landed on the list entry: the queued note entry goes on now, and the editor stays.
+      expect(push).toHaveBeenCalledTimes(2);
+      expect(view()).toBe("note");
+      expect($<HTMLInputElement>("#note-title")!.value).toBe("Doomed");
+    } finally {
+      push.mockRestore();
+      back.mockRestore();
+      vi.unstubAllGlobals();
+    }
+  });
+
+  it("clearing a deleted note's entry keeps the router's state", () => {
+    vi.stubGlobal("matchMedia", (query: string) => ({ matches: query === "(max-width: 760px)" }));
+    window.history.replaceState({ __NA: true, notesPane: "note", noteId: "gone" }, "");
+    try {
+      remount();
+      expect(view()).toBe("list");
+      expect(window.history.state).toEqual({ __NA: true, notesPane: undefined, noteId: undefined });
+    } finally {
+      vi.unstubAllGlobals();
+    }
+  });
+
+  it("narrowing to phone while typing in the wide editor keeps that note open and adds its entry", () => {
+    let phone = false;
+    const listeners: (() => void)[] = [];
+    vi.stubGlobal("matchMedia", () => ({ get matches() { return phone; }, addEventListener: (_: string, cb: () => void) => listeners.push(cb), removeEventListener: () => {} }));
+    const push = vi.spyOn(window.history, "pushState");
+    try {
+      remount();
+      // Wide: the first note shows in the editor without picking a row; the view is still "list".
+      expect(view()).toBe("list");
+      act(() => { $<HTMLTextAreaElement>("#note-body")!.focus(); });
+      phone = true;
+      act(() => { listeners.forEach((cb) => cb()); });
+      expect(view()).toBe("note");
+      expect(push).toHaveBeenCalledWith({ notesPane: "note", noteId: noteStore.getSnapshot()[0].id }, "");
+      expect(document.activeElement).toBe($("#note-body"));
+    } finally {
+      push.mockRestore();
+      vi.unstubAllGlobals();
+    }
+  });
+
+  it("narrowing to phone while just browsing the list stays on the list", () => {
+    let phone = false;
+    const listeners: (() => void)[] = [];
+    vi.stubGlobal("matchMedia", () => ({ get matches() { return phone; }, addEventListener: (_: string, cb: () => void) => listeners.push(cb), removeEventListener: () => {} }));
+    const push = vi.spyOn(window.history, "pushState");
+    try {
+      remount();
+      act(() => { (document.activeElement as HTMLElement | null)?.blur(); });
+      phone = true;
+      act(() => { listeners.forEach((cb) => cb()); });
+      expect(view()).toBe("list");
+      expect(push).not.toHaveBeenCalled();
+    } finally {
+      push.mockRestore();
       vi.unstubAllGlobals();
     }
   });

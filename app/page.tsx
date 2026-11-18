@@ -2,17 +2,13 @@
 
 import { useEffect, useRef, useState, useSyncExternalStore } from "react";
 import { AppFoot, AppTop, PlusIcon } from "@/components/app-shell";
+import { createNotesHistory } from "@/lib/notes-history";
 import { createNote, dateLabel, deleteNote, filterNotes, noteCount, noteStore, pickActive, previewOf, restoreNote, updateNote, type Note } from "@/lib/notes";
 
 const noop = () => () => {};
 // Matches the CSS breakpoint where only one pane shows.
 const PHONE = "(max-width: 760px)";
 const isPhone = () => typeof window.matchMedia === "function" && window.matchMedia(PHONE).matches;
-// The one history model: on phones the open note is a history entry { notesPane: "note", noteId }.
-const entryNoteId = (state: unknown) => {
-  const entry = state as { notesPane?: unknown; noteId?: unknown } | null;
-  return entry?.notesPane === "note" && typeof entry.noteId === "string" ? entry.noteId : "";
-};
 const deletedLabel = (batch: Note[]) => (batch.length === 1 ? `Deleted “${batch[0].title || "Untitled note"}”` : `Deleted ${batch.length} notes`);
 
 export default function Home() {
@@ -38,18 +34,12 @@ export default function Home() {
   // now shown (the title when a note opens, that note's row when going back to the list).
   const focusAfterView = useRef<"title" | "row" | null>(null);
   const shownView = useRef<"list" | "note">("list");
-  // On phones opening a note adds a history entry ({ notesPane: "note", noteId }), so the browser or
-  // Android Back returns to the list (and its search) instead of leaving the app, and Forward reopens
-  // that note. True while that entry is the current one.
-  const noteInHistory = useRef(false);
-  const activeIdRef = useRef("");
-  // Make the open note the current history entry: add one, or retarget the one already there.
-  const recordNote = (noteId: string) => {
-    const state = { notesPane: "note", noteId };
-    if (noteInHistory.current) window.history.replaceState(state, "");
-    else window.history.pushState(state, "");
-    noteInHistory.current = true;
-  };
+  // On phones the open note is a history entry (lib/notes-history), so the browser or Android Back
+  // returns to the list (and its search) instead of leaving the app, and Forward reopens that note.
+  const nav = useRef<ReturnType<typeof createNotesHistory> | null>(null);
+  // The note the editor shows (on wide screens one shows even before any row is picked).
+  const shownNoteId = useRef("");
+  const paneRef = useRef<HTMLElement>(null);
 
   const active = pickActive(notes, activeId);
   // The open note can vanish under us (deleted in another tab). Go back to the list for real, even
@@ -69,34 +59,42 @@ export default function Home() {
     titleRef.current?.select();
   }, [activeId]);
   useEffect(() => { if (removed.length) undoRef.current?.focus(); }, [removed]);
-  useEffect(() => { activeIdRef.current = activeId; }, [activeId]);
+  useEffect(() => { shownNoteId.current = active?.id ?? ""; }, [active]);
   useEffect(() => {
+    const history = createNotesHistory(window.history);
+    nav.current = history;
+    const exists = (noteId: string) => noteStore.getSnapshot().some((note) => note.id === noteId);
     // The entry we land on decides the pane: a note entry (Forward, or the current entry after a
     // reload) opens its note again; any other entry shows the list.
     function showEntry(state: unknown, moveFocus: boolean) {
-      const noteId = entryNoteId(state);
-      if (noteId && noteStore.getSnapshot().some((note) => note.id === noteId)) {
-        noteInHistory.current = true;
+      const landing = history.land(state, exists);
+      if (!landing) return;
+      if (landing.show === "note") {
         if (moveFocus && shownView.current !== "note") focusAfterView.current = "title";
-        setActiveId(noteId);
+        setActiveId(landing.noteId);
         setView("note");
         return;
       }
-      // Forward onto the entry of a note deleted since: show the list and make that entry a list entry.
-      if (noteId) window.history.replaceState(null, "");
-      else if (!noteInHistory.current) return;
-      noteInHistory.current = false;
       if (shownView.current === "list") return;
       focusAfterView.current = "row";
       setView("list");
     }
     const onPop = (event: PopStateEvent) => showEntry(event.state, true);
-    // Reloaded on a note entry: show that note (without grabbing focus) so Back still goes to the list.
+    // Reloaded on a note entry: show that note in place (no focus grab, no history move).
     showEntry(window.history.state, false);
-    // Narrowed past the breakpoint (rotation, resize) with a note open: the list is now hidden, so
-    // give the open note its history entry, or Back would leave the app.
+    // Narrowed past the breakpoint (rotation, resize): the list hides, so keep the note being edited
+    // open (the note pane, or focus inside the editor on wide screens) and give it its entry, or
+    // Back would leave the app.
     const media = typeof window.matchMedia === "function" ? window.matchMedia(PHONE) : null;
-    const onMedia = () => { if (isPhone() && shownView.current === "note" && !noteInHistory.current) recordNote(activeIdRef.current); };
+    const onMedia = () => {
+      const noteId = shownNoteId.current;
+      if (!isPhone() || !noteId || history.inEntry) return;
+      const editing = shownView.current === "note" || Boolean(paneRef.current?.contains(document.activeElement));
+      if (!editing) return;
+      history.record(noteId);
+      setActiveId(noteId);
+      setView("note");
+    };
     window.addEventListener("popstate", onPop);
     media?.addEventListener?.("change", onMedia);
     return () => {
@@ -110,10 +108,7 @@ export default function Home() {
     // Undo state is untouched; popstate then finds the list already shown. Only on a real editor →
     // list switch: on mount (a reload restoring a note entry) history must not move.
     const cameFromNote = shownView.current === "note";
-    if (view === "list" && cameFromNote && noteInHistory.current) {
-      noteInHistory.current = false;
-      window.history.back();
-    }
+    if (view === "list" && cameFromNote) nav.current?.drop();
     // A switch to the list that no handler asked for (the open note vanished) also lands on the list.
     shownView.current = view;
     const target = focusAfterView.current ?? (view === "list" && cameFromNote ? "row" : null);
@@ -146,7 +141,7 @@ export default function Home() {
   }
   function showNote(noteId: string) {
     // Wide screens add no entry, but an entry already there (made on a phone) follows the note shown.
-    if (isPhone() || noteInHistory.current) recordNote(noteId);
+    if (isPhone() || nav.current?.inEntry) nav.current?.record(noteId);
     setView("note");
   }
   function open(id: string) {
@@ -156,7 +151,7 @@ export default function Home() {
   }
   function back() {
     // ‹ Notes uses the same history entry as the browser Back (popstate below switches the pane).
-    if (noteInHistory.current) {
+    if (nav.current?.inEntry) {
       window.history.back();
       return;
     }
@@ -238,7 +233,7 @@ export default function Home() {
           )}
         </aside>
 
-        <section className="as-main as-note-pane" aria-label="Note editor">
+        <section ref={paneRef} className="as-main as-note-pane" aria-label="Note editor">
           {active ? (
             <article className="as-editor" aria-label="Note">
               <div className="as-editor-bar">
