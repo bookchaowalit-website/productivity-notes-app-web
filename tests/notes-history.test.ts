@@ -120,9 +120,47 @@ describe("Forward onto a deleted note's entry", () => {
     nav.land({ notesPane: "note", noteId: "gone" }, none);
     expect(h.forward).toHaveBeenCalledTimes(1);
     expect(h.back).not.toHaveBeenCalled();
-    // That Forward may never land (last entry), so a note opened next is recorded at once.
+    // That Forward may never land (last entry), so a note opened next is recorded at once, on the
+    // dead entry itself: Back from it then reaches the list instead of the dead entry.
+    nav.record("b");
+    expect(h.pushState).not.toHaveBeenCalled();
+    expect(h.replaceState).toHaveBeenCalledWith({ notesPane: "note", noteId: "b" }, "");
+    nav.record("c");
+    expect(h.replaceState).toHaveBeenLastCalledWith({ notesPane: "note", noteId: "c" }, "");
+    expect(h.pushState).not.toHaveBeenCalled();
+  });
+
+  it("without the Navigation API, Back from a note opened on a deleted entry returns to the list", () => {
+    // Simulated stack: [list, A] with A deleted; the user pressed Forward onto A's entry.
+    const stack: unknown[] = [null, { notesPane: "note", noteId: "a" }];
+    let at = 1;
+    const h = {
+      get state() { return stack[at]; },
+      pushState: vi.fn((next: unknown) => { stack.splice(at + 1, stack.length, next); at += 1; }),
+      replaceState: vi.fn((next: unknown) => { stack[at] = next; }),
+      back: vi.fn(() => { if (at > 0) at -= 1; }),
+      forward: vi.fn(() => { if (at < stack.length - 1) at += 1; }),
+    };
+    const nav = createNotesHistory(h as unknown as History);
+    const exists = (id: string) => id !== "a";
+    expect(nav.land(h.state, exists)).toEqual({ show: "list" });
+    expect(at).toBe(1); // Forward had nowhere to go
+    nav.record("b");
+    // ‹ Notes on the phone is Back from the note entry.
+    h.back();
+    expect(nav.land(h.state, exists)).toEqual({ show: "list" });
+    expect(h.forward).toHaveBeenCalledTimes(1);
+    expect(at).toBe(0);
+  });
+
+  it("a Forward that does land clears the dead-entry state, so the next note is pushed", () => {
+    const h = fakeHistory();
+    const nav = createNotesHistory(h as unknown as History);
+    nav.land({ notesPane: "note", noteId: "gone" }, none);
+    expect(nav.land(null, all)).toBeNull();
     nav.record("b");
     expect(h.pushState).toHaveBeenCalledWith({ notesPane: "note", noteId: "b" }, "");
+    expect(h.replaceState).not.toHaveBeenCalled();
   });
 
   it("with nothing beyond, steps back onto the list entry (no two list stops in a row)", () => {

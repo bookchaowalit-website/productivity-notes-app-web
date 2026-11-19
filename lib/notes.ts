@@ -64,8 +64,16 @@ export function noteCount(count: number): string {
   return `${count} ${count === 1 ? "note" : "notes"}`;
 }
 
+/** ISO form for <time dateTime>, or undefined when the saved number is outside the Date range. */
+export function isoTime(timestamp: number): string | undefined {
+  const date = new Date(timestamp);
+  return Number.isNaN(date.getTime()) ? undefined : date.toISOString();
+}
+
 export function dateLabel(timestamp: number, locale?: string): string {
-  return timestamp ? new Date(timestamp).toLocaleDateString(locale, { month: "short", day: "numeric" }) : "Sample note";
+  if (!timestamp) return "Sample note";
+  // A finite number beyond the Date range (edited storage) keeps the note readable without a date.
+  return isoTime(timestamp) ? new Date(timestamp).toLocaleDateString(locale, { month: "short", day: "numeric" }) : "Date unknown";
 }
 
 function isNote(value: unknown): value is Note {

@@ -180,6 +180,17 @@ describe("review fixes", () => {
     expect($<HTMLTextAreaElement>("#note-body")!.value).toBe("Edited elsewhere");
   });
 
+  it("an updatedAt beyond the Date range keeps every note readable, with no invalid dateTime", () => {
+    const tooFar = 8.64e15 + 1;
+    act(() => { noteStore.update(() => [{ id: "far", title: "Far future", body: "", updatedAt: tooFar }, { id: "ok", title: "Normal", body: "", updatedAt: Date.UTC(2026, 9, 23) }]); });
+    expect(titles()).toEqual(["Far future", "Normal"]);
+    const times = [...host.querySelectorAll(".as-note-row time")];
+    expect(times.map((t) => t.getAttribute("dateTime"))).toEqual([null, "2026-10-23T00:00:00.000Z"]);
+    expect(times[0].textContent).toBe("Date unknown");
+    act(() => { $<HTMLButtonElement>(".as-note-row")!.click(); });
+    expect($(".as-editor-meta")!.textContent).toBe("Edit date unknown");
+  });
+
   it("stays on the list when another tab empties the notes and later creates one", () => {
     act(() => { $<HTMLButtonElement>(".as-note-row")!.click(); });
     act(() => { noteStore.update(() => []); });

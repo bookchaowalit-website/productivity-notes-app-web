@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { SEED_NOTES, noteCount, previewOf, restoreNote, createNote, dateLabel, deleteNote, filterNotes, leafNumber, parseNotes, pickActive, sortNotes, updateNote, type Note } from "@/lib/notes";
+import { SEED_NOTES, noteCount, previewOf, restoreNote, createNote, dateLabel, deleteNote, isoTime, filterNotes, leafNumber, parseNotes, pickActive, sortNotes, updateNote, type Note } from "@/lib/notes";
 
 const note = (id: string, updatedAt: number, title = id, body = ""): Note => ({ id, title, body, updatedAt });
 const notes = [note("a", 10, "Groceries", "milk"), note("b", 30, "Ideas", "Ship the MILK app"), note("c", 20, "Plan")];
@@ -56,6 +56,9 @@ describe("edits", () => {
 
   it("labels an untouched note as a new leaf", () => {
     expect(dateLabel(0)).toBe("Sample note");
+    expect(dateLabel(8.64e15 + 1)).toBe("Date unknown");
+    expect(isoTime(8.64e15 + 1)).toBeUndefined();
+    expect(isoTime(Date.UTC(2026, 9, 23))).toBe("2026-10-23T00:00:00.000Z");
     expect(dateLabel(Date.UTC(2026, 9, 23, 12), "en-US")).toBe("Oct 23");
   });
 });

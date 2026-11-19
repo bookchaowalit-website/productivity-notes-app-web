@@ -25,6 +25,10 @@ export function createNotesHistory(history: HistoryLike, canGoForward: CanGoForw
   let queued = "";
   // A Forward past a deleted note's entry is in flight (see land).
   let skipping = false;
+  // Still on a deleted note's entry after a Forward the browser could not confirm (no Navigation
+  // API): if that Forward never lands, the next note replaces this dead entry instead of stacking
+  // above it, or Back from that note would land on the dead entry and bounce forward onto it again.
+  let onDeadEntry = false;
   function stepBack() {
     inEntry = false;
     pendingBack = true;
@@ -33,9 +37,10 @@ export function createNotesHistory(history: HistoryLike, canGoForward: CanGoForw
 
   function write(noteId: string) {
     const state: Record<string, unknown> = { ...(history.state && typeof history.state === "object" ? history.state : {}), notesPane: "note", noteId };
-    if (inEntry) history.replaceState(state, "");
+    if (inEntry || onDeadEntry) history.replaceState(state, "");
     else history.pushState({ notesPane: "note", noteId }, "");
     inEntry = true;
+    onDeadEntry = false;
   }
 
   return {
@@ -57,6 +62,8 @@ export function createNotesHistory(history: HistoryLike, canGoForward: CanGoForw
      * show, or null when the page already shows the right pane.
      */
     land(state: unknown, exists: (noteId: string) => boolean, initial = false): Landing {
+      // Any landing means the earlier Forward did move on.
+      onDeadEntry = false;
       if (pendingBack) {
         // Our own drop() finished: the list is already shown; record a note opened meanwhile.
         pendingBack = false;
@@ -103,6 +110,7 @@ export function createNotesHistory(history: HistoryLike, canGoForward: CanGoForw
         // Hold new entries only while a Forward is known to be in flight: where the browser cannot
         // tell, a Forward from the last entry never lands and would hold them forever.
         skipping = beyond === true;
+        onDeadEntry = beyond === undefined;
         history.forward();
       }
       return { show: "list" };

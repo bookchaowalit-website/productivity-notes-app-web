@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState, useSyncExternalStore } from "react";
 import { AppFoot, AppTop, PlusIcon } from "@/components/app-shell";
 import { createNotesHistory } from "@/lib/notes-history";
-import { createNote, dateLabel, deleteNote, filterNotes, noteCount, noteStore, pickActive, previewOf, restoreNote, updateNote, type Note } from "@/lib/notes";
+import { createNote, dateLabel, deleteNote, isoTime, filterNotes, noteCount, noteStore, pickActive, previewOf, restoreNote, updateNote, type Note } from "@/lib/notes";
 
 const noop = () => () => {};
 // Matches the CSS breakpoint where only one pane shows.
@@ -230,7 +230,7 @@ export default function Home() {
                 <li key={note.id}>
                   <button type="button" className="as-note-row" aria-current={active?.id === note.id ? "true" : undefined} onClick={() => open(note.id)}>
                     <strong>{note.title || "Untitled note"}</strong>
-                    <span>{note.updatedAt ? <time dateTime={ready ? new Date(note.updatedAt).toISOString() : undefined}>{when(note.updatedAt)}</time> : <span className="as-note-when">{when(0)}</span>}{ready ? "  " : ""}{previewOf(note.body)}</span>
+                    <span>{note.updatedAt ? <time dateTime={ready ? isoTime(note.updatedAt) : undefined}>{when(note.updatedAt)}</time> : <span className="as-note-when">{when(0)}</span>}{ready ? "  " : ""}{previewOf(note.body)}</span>
                   </button>
                 </li>
               ))}
@@ -247,7 +247,7 @@ export default function Home() {
             <article className="as-editor" aria-label="Note">
               <div className="as-editor-bar">
                 <button type="button" className="as-plain as-back" onClick={back}>‹ Notes</button>
-                <span className="as-editor-meta">{ready ? (active.updatedAt ? `Edited ${dateLabel(active.updatedAt)}` : dateLabel(0)) : ""}</span>
+                <span className="as-editor-meta">{ready ? (active.updatedAt ? (isoTime(active.updatedAt) ? `Edited ${dateLabel(active.updatedAt)}` : "Edit date unknown") : dateLabel(0)) : ""}</span>
               </div>
               <label className="as-sr" htmlFor="note-title">Note title</label>
               <input id="note-title" ref={titleRef} className="as-editor-title" value={active.title} onChange={(event) => updateActive({ title: event.target.value })} placeholder="Title" autoComplete="off" />
