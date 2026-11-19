@@ -27,6 +27,7 @@ export function AppTop({ name, tagline, heading = false }: { name: string; tagli
 export function AppFoot({ source }: { source: string }) {
   return (
     <footer className="as-foot">
+      <a href="https://bookchaowalit.com/">Bookchaowalit</a>
       <a href="https://bookchaowalit.com/projects">More projects</a>
       <a href={source}>Source</a>
       <a href="https://bookchaowalit.com/privacy">Privacy</a>

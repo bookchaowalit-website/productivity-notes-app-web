@@ -26,8 +26,9 @@ describe("structure (review 2026-11-18)", () => {
     expect(html).toMatch(/<h1 class="as-brand">Notes<small>/);
     expect(html.indexOf("<h1")).toBeLessThan(html.indexOf("<h2"));
   });
-  it("the footer names a different page than the top bar's Bookchaowalit link", () => {
+  it("the footer links home under the top bar's name and More projects to the projects page", () => {
     expect(html).toContain('<a href="https://bookchaowalit.com/">Bookchaowalit</a>');
+    expect(html).toContain('<footer class="as-foot"><a href="https://bookchaowalit.com/">Bookchaowalit</a>');
     expect(html).toContain('<a href="https://bookchaowalit.com/projects">More projects</a>');
   });
 });
