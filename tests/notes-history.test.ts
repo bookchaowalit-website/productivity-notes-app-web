@@ -191,3 +191,21 @@ describe("Forward onto a deleted note's entry", () => {
     expect(h.pushState).toHaveBeenCalledTimes(1);
   });
 });
+
+describe("back (‹ Notes)", () => {
+  it("goes back once however often it is pressed before the landing, then works again", () => {
+    const h = fakeHistory();
+    const nav = createNotesHistory(h as unknown as History);
+    expect(nav.back()).toBe(false);
+    expect(h.back).not.toHaveBeenCalled();
+    nav.record("a");
+    expect(nav.back()).toBe(true);
+    expect(nav.back()).toBe(true);
+    expect(h.back).toHaveBeenCalledTimes(1);
+    expect(nav.land(null, all)).toEqual({ show: "list" });
+    expect(nav.inEntry).toBe(false);
+    nav.record("b");
+    nav.back();
+    expect(h.back).toHaveBeenCalledTimes(2);
+  });
+});

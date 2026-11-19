@@ -160,10 +160,8 @@ export default function Home() {
   }
   function back() {
     // ‹ Notes uses the same history entry as the browser Back (popstate below switches the pane).
-    if (nav.current?.inEntry) {
-      window.history.back();
-      return;
-    }
+    // Pressed twice before popstate, it still goes back only once (notes-history ignores the repeat).
+    if (nav.current?.back()) return;
     focusAfterView.current = "row";
     setView("list");
   }

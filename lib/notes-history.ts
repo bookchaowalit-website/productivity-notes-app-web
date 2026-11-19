@@ -29,6 +29,9 @@ export function createNotesHistory(history: HistoryLike, canGoForward: CanGoForw
   // API): if that Forward never lands, the next note replaces this dead entry instead of stacking
   // above it, or Back from that note would land on the dead entry and bounce forward onto it again.
   let onDeadEntry = false;
+  // A ‹ Notes Back is in flight: a second press before its popstate would go back one entry more
+  // (out of the app), so it is ignored until the landing.
+  let userBack = false;
   function stepBack() {
     inEntry = false;
     pendingBack = true;
@@ -50,6 +53,18 @@ export function createNotesHistory(history: HistoryLike, canGoForward: CanGoForw
       if (pendingBack || skipping) queued = noteId;
       else write(noteId);
     },
+    /**
+     * ‹ Notes: go back off the note entry like the browser Back (the landing switches the pane).
+     * Returns false when there is no note entry to leave; repeated presses before the landing are ignored.
+     */
+    back(): boolean {
+      if (!inEntry) return false;
+      if (!userBack) {
+        userBack = true;
+        history.back();
+      }
+      return true;
+    },
     /** The editor closed outside history (Delete, note gone): step off its entry. */
     drop() {
       // The editor closed: a note queued behind a pending Back is no longer shown, so forget it.
@@ -62,8 +77,9 @@ export function createNotesHistory(history: HistoryLike, canGoForward: CanGoForw
      * show, or null when the page already shows the right pane.
      */
     land(state: unknown, exists: (noteId: string) => boolean, initial = false): Landing {
-      // Any landing means the earlier Forward did move on.
+      // Any landing means the earlier Forward (or ‹ Notes Back) did move on.
       onDeadEntry = false;
+      userBack = false;
       if (pendingBack) {
         // Our own drop() finished: the list is already shown; record a note opened meanwhile.
         pendingBack = false;

@@ -47,13 +47,16 @@ export function restoreNote(notes: Note[], note: Note): Note[] {
 }
 
 /** First non-empty line of the body, for the one-line preview under a title in the list. */
+/** The row shows one line; screen readers read the whole button name, so the preview is cut here too. */
+export const PREVIEW_MAX = 80;
+
 export function previewOf(body: string): string {
   // Stop at the first line with text: long pasted bodies are previewed on every keystroke.
   let start = 0;
   while (start <= body.length) {
     const end = body.indexOf("\n", start);
     const line = body.slice(start, end < 0 ? body.length : end).trim();
-    if (line) return line;
+    if (line) return line.length > PREVIEW_MAX ? `${line.slice(0, PREVIEW_MAX).trimEnd()}…` : line;
     if (end < 0) break;
     start = end + 1;
   }

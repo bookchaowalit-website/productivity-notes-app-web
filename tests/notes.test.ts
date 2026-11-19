@@ -88,6 +88,10 @@ describe("App shell helpers", () => {
     expect(previewOf("")).toBe("No additional text");
     expect(previewOf("\n\n  second  \nthird")).toBe("second");
     expect(previewOf("only")).toBe("only");
+    const long = "word ".repeat(200);
+    expect(previewOf(long).length).toBeLessThanOrEqual(81);
+    expect(previewOf(long).endsWith("…")).toBe(true);
+    expect(previewOf("x".repeat(80))).toBe("x".repeat(80));
   });
   it("restores a deleted note once", () => {
     expect(restoreNote([], a)).toEqual([a]);
