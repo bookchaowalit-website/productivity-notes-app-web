@@ -11,10 +11,12 @@ export const PlusIcon = () => (
 
 export type Tone = "green" | "amber" | "grey" | "red";
 
-export function AppTop({ name, tagline }: { name: string; tagline: string }) {
+/** `heading` makes the app name the page's h1, for apps whose main pane has no title of its own. */
+export function AppTop({ name, tagline, heading = false }: { name: string; tagline: string; heading?: boolean }) {
+  const Brand = heading ? "h1" : "div";
   return (
     <header className="as-top">
-      <div className="as-brand">{name}<small>{tagline}</small></div>
+      <Brand className="as-brand">{name}<small>{tagline}</small></Brand>
       <nav aria-label="Site">
         <a href="https://bookchaowalit.com/">Bookchaowalit</a>
       </nav>
@@ -25,7 +27,7 @@ export function AppTop({ name, tagline }: { name: string; tagline: string }) {
 export function AppFoot({ source }: { source: string }) {
   return (
     <footer className="as-foot">
-      <a href="https://bookchaowalit.com/">More projects</a>
+      <a href="https://bookchaowalit.com/projects">More projects</a>
       <a href={source}>Source</a>
       <a href="https://bookchaowalit.com/privacy">Privacy</a>
       <a href="https://monitor.bookchaowalit.com/">Status</a>

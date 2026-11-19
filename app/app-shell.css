@@ -29,7 +29,7 @@
   --as-grey: #515154; --as-grey-bg: #ececf0;
   --as-red: #b3261e; --as-red-bg: #fde8e6;
   --as-shadow: 0 1px 2px rgb(0 0 0 / 4%), 0 8px 24px rgb(0 0 0 / 6%);
-  --as-font: var(--font-geist-sans), -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  --as-font: var(--font-geist-sans), var(--font-noto-thai), -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
   color-scheme: light dark;
 }
 @media (prefers-color-scheme: dark) {
@@ -216,3 +216,18 @@
 
 /* The top bar is sticky: keep skip-link targets and keyboard-focused controls clear of it when the page scrolls to them. */
 html { scroll-padding-top: 64px; scroll-padding-bottom: 16px; }
+
+/* Review 2026-11-18. The app name is the page's h1 (the panes have no title of their own). */
+h1.as-brand { margin: 0; line-height: inherit; }
+/* Thai titles: room for marks above and below the line inside the title box and the list rows. */
+.as-editor-title { line-height: 1.4; }
+.as-note-row strong { line-height: 1.45; }
+.as-note-row .as-note-when { color: var(--as-fg); font-weight: 500; }
+/* Delete lives at the end of the note, not beside ‹ Notes in the bar. */
+.as-editor-foot { display: flex; justify-content: flex-end; padding: 4px 8px; border-top: 1px solid var(--as-line); }
+/* Toast: a visible close button, and room below the page so it never covers the footer or the end of
+   the note, nor a control reached with Tab while it shows. */
+.as-toast .as-toast-close { min-width: 44px; padding: 0; color: #f5f5f7; font-size: 22px; line-height: 1; }
+.as-toast .as-toast-close:hover { background: rgb(255 255 255 / 12%); }
+.as:has(> .as-toast) { padding-bottom: 88px; }
+html:has(.as-toast) { scroll-padding-bottom: 96px; }

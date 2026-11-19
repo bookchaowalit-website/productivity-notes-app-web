@@ -14,7 +14,20 @@ describe("home page (server render)", () => {
   });
 
   it("prints no locale-dependent date before the browser has loaded", () => {
-    expect(html).not.toContain("Not edited yet");
+    expect(html).not.toContain("Sample note");
     expect(html).toContain("<h2>Notes</h2>");
+  });
+});
+
+describe("structure (review 2026-11-18)", () => {
+  const html = renderToString(<Home />);
+  it("has exactly one h1, the app name, before the note count h2", () => {
+    expect(html.match(/<h1/g)).toHaveLength(1);
+    expect(html).toMatch(/<h1 class="as-brand">Notes<small>/);
+    expect(html.indexOf("<h1")).toBeLessThan(html.indexOf("<h2"));
+  });
+  it("the footer names a different page than the top bar's Bookchaowalit link", () => {
+    expect(html).toContain('<a href="https://bookchaowalit.com/">Bookchaowalit</a>');
+    expect(html).toContain('<a href="https://bookchaowalit.com/projects">More projects</a>');
   });
 });

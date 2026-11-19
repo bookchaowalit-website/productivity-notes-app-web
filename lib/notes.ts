@@ -65,7 +65,7 @@ export function noteCount(count: number): string {
 }
 
 export function dateLabel(timestamp: number, locale?: string): string {
-  return timestamp ? new Date(timestamp).toLocaleDateString(locale, { month: "short", day: "numeric" }) : "Not edited yet";
+  return timestamp ? new Date(timestamp).toLocaleDateString(locale, { month: "short", day: "numeric" }) : "Sample note";
 }
 
 function isNote(value: unknown): value is Note {

@@ -208,7 +208,7 @@ export default function Home() {
     <div className="as">
       {/* Focus <main> without following the #main hash: that would add a history entry above the note's. */}
       <a className="as-skip" href="#main" onClick={(event) => { event.preventDefault(); document.getElementById("main")?.focus(); }}>Skip to content</a>
-      <AppTop name="Notes" tagline="Saved in this browser · no sync" />
+      <AppTop name="Notes" tagline="Saved in this browser · no sync" heading />
 
       {/* With no note open (e.g. the last one was deleted in another tab) phones fall back to the list,
           which always has New note; otherwise the empty pane would have no way back. */}
@@ -230,7 +230,7 @@ export default function Home() {
                 <li key={note.id}>
                   <button type="button" className="as-note-row" aria-current={active?.id === note.id ? "true" : undefined} onClick={() => open(note.id)}>
                     <strong>{note.title || "Untitled note"}</strong>
-                    <span><time>{when(note.updatedAt)}</time>{ready ? "  " : ""}{previewOf(note.body)}</span>
+                    <span>{note.updatedAt ? <time dateTime={ready ? new Date(note.updatedAt).toISOString() : undefined}>{when(note.updatedAt)}</time> : <span className="as-note-when">{when(0)}</span>}{ready ? "  " : ""}{previewOf(note.body)}</span>
                   </button>
                 </li>
               ))}
@@ -248,12 +248,15 @@ export default function Home() {
               <div className="as-editor-bar">
                 <button type="button" className="as-plain as-back" onClick={back}>‹ Notes</button>
                 <span className="as-editor-meta">{ready ? (active.updatedAt ? `Edited ${dateLabel(active.updatedAt)}` : dateLabel(0)) : ""}</span>
-                <button type="button" className="as-plain as-danger" onClick={remove}>Delete</button>
               </div>
               <label className="as-sr" htmlFor="note-title">Note title</label>
               <input id="note-title" ref={titleRef} className="as-editor-title" value={active.title} onChange={(event) => updateActive({ title: event.target.value })} placeholder="Title" autoComplete="off" />
               <label className="as-sr" htmlFor="note-body">Note text</label>
               <textarea id="note-body" className="as-editor-body" value={active.body} onChange={(event) => updateActive({ body: event.target.value })} placeholder="Start writing" />
+              {/* Delete sits at the end of the note, away from ‹ Notes and the spot where apps put Done. */}
+              <div className="as-editor-foot">
+                <button type="button" className="as-plain as-danger" onClick={remove}>Delete</button>
+              </div>
             </article>
           ) : (
             <div className="as-list as-empty as-editor-empty"><strong>No note open</strong>Pick a note from the list or press New note.</div>
@@ -274,6 +277,7 @@ export default function Home() {
         >
           <span>{deletedLabel(removed)}</span>
           <button ref={undoRef} type="button" className="as-plain" onClick={undo} aria-label={removed.length === 1 ? "Undo delete" : `Undo delete of ${removed.length} notes`}>Undo</button>
+          <button type="button" className="as-plain as-toast-close" onClick={closeToast} aria-label="Dismiss">×</button>
         </div>
       ) : null}
 

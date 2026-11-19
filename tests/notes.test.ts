@@ -55,7 +55,7 @@ describe("edits", () => {
   });
 
   it("labels an untouched note as a new leaf", () => {
-    expect(dateLabel(0)).toBe("Not edited yet");
+    expect(dateLabel(0)).toBe("Sample note");
     expect(dateLabel(Date.UTC(2026, 9, 23, 12), "en-US")).toBe("Oct 23");
   });
 });

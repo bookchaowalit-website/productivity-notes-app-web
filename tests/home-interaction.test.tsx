@@ -42,7 +42,7 @@ describe("notes", () => {
   it("shows the count and the welcome note open after loading", () => {
     expect($(".as-note-list-head h2")!.textContent).toBe("1 note");
     expect($<HTMLInputElement>("#note-title")!.value).toBe("Welcome");
-    expect($(".as-editor-meta")!.textContent).toBe("Not edited yet");
+    expect($(".as-editor-meta")!.textContent).toBe("Sample note");
   });
 
   it("New note opens it on top with the title selected, and edits save to storage", () => {
@@ -607,5 +607,26 @@ describe("history: cancel queued entry, breakpoint keeps search focus", () => {
     } finally {
       vi.unstubAllGlobals();
     }
+  });
+});
+
+describe("review 2026-11-18", () => {
+  it("Delete sits at the end of the note, not in the bar beside ‹ Notes", () => {
+    expect($(".as-editor-bar")!.textContent).not.toContain("Delete");
+    expect($(".as-editor-foot button")!.textContent).toBe("Delete");
+  });
+
+  it("the toast has a visible 44px close button that dismisses it and keeps the delete", () => {
+    act(() => { button("Delete").click(); });
+    const close = host.querySelector<HTMLButtonElement>('.as-toast button[aria-label="Dismiss"]')!;
+    expect(close.className).toContain("as-toast-close");
+    act(() => { close.click(); });
+    expect($(".as-toast")).toBeNull();
+    expect(stored()).toEqual([]);
+  });
+
+  it("the seed note reads as a sample, not as a missing date", () => {
+    expect($(".as-note-row .as-note-when")!.textContent).toBe("Sample note");
+    expect($(".as-note-row time")).toBeNull();
   });
 });
