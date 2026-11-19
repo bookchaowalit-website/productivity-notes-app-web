@@ -46,7 +46,9 @@ Forward reopens the note. These races are unlikely and left as they are (checked
 - **Deleted note's entry.** It stays in the history (browsers cannot remove entries). Forward onto
   it shows the list and keeps going forward, so later pages stay reachable; when the browser reports
   nothing beyond it (`navigation.canGoForward`), the app steps back onto the list entry instead, so
-  that Forward appears to do nothing. Browsers without the Navigation API cannot tell, so there a
+  that Forward appears to do nothing. When the entry after a deleted note's entry belongs to another
+  site, the Navigation API reports no forward entry for this document, so Forward to that site needs
+  a second press. Browsers without the Navigation API cannot tell, so there a
   Forward onto the last entry stays on it and Back from it needs one extra press.
 - **User Back racing our Back.** If the user presses Back while the app's own `history.back()` is
   still pending, both steps run and the app may leave by one entry more than expected.
