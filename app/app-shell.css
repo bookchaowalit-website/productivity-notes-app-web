@@ -229,5 +229,7 @@ h1.as-brand { margin: 0; line-height: inherit; }
    the note, nor a control reached with Tab while it shows. */
 .as-toast .as-toast-close { min-width: 44px; padding: 0; color: #f5f5f7; font-size: 22px; line-height: 1; }
 .as-toast .as-toast-close:hover { background: rgb(255 255 255 / 12%); }
+/* Keep the final editor lines scrollable above the fixed toast (52px tall, 24px from the bottom). */
+.as:has(> .as-toast) .as-body { padding-bottom: 144px; }
 .as:has(> .as-toast) { padding-bottom: 88px; }
 html:has(.as-toast) { scroll-padding-bottom: 96px; }
