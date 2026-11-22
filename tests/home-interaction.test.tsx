@@ -636,6 +636,12 @@ describe("review 2026-11-18", () => {
     expect(stored()).toEqual([]);
   });
 
+  it("reserves scroll space after the editor while the fixed toast is visible", async () => {
+    const { readFileSync } = await import("node:fs");
+    const css = readFileSync(`${process.cwd()}/app/app-shell.css`, "utf8");
+    expect(css).toContain(".as:has(> .as-toast) .as-body { padding-bottom: 144px; }");
+  });
+
   it("the seed note reads as a sample, not as a missing date", () => {
     expect($(".as-note-row .as-note-when")!.textContent).toBe("Sample note");
     expect($(".as-note-row time")).toBeNull();
