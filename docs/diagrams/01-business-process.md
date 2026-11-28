@@ -36,7 +36,7 @@ Sources: `app/page.tsx`, `lib/notes.ts`, `lib/local-store.ts`, `lib/notes-histor
 - ไม่มี markdown, tag, pin, export หรือ sync (`README.md` §What it does not do)
 - ความเสี่ยงเรื่อง history บนมือถือระบุไว้ใน `PRODUCT.md` §Known limits (ยอมรับแล้ว)
 - CI (GitHub Actions บน push/PR) แยกจากการ deploy: ไม่มี workflow ที่ deploy
-- การ deploy: Vercel CLI ตาม `PRODUCT.md`; push ไป `main` ไม่ deploy ถ้า Git ยังผูก repo เก่า [ต้องยืนยัน]
+- การ deploy: Vercel Git link ของโปรเจกต์ `bookchaowalit-notes-app-frontend` ชี้ repo นี้ branch production `main` (ตรวจผ่าน Vercel API 2026-11-28) push ไป `main` จึง deploy (ไม่ผ่าน CI gate); production = `47e24f5` ส่วน main HEAD `0ed7728` ล้ำหน้าเฉพาะ commit ใน `docs/`
 
 ## To-Be (ไม่มีแหล่งที่เขียนไว้)
 
@@ -46,5 +46,5 @@ Sources: `app/page.tsx`, `lib/notes.ts`, `lib/local-store.ts`, `lib/notes-histor
 
 | ID | As-Is → To-Be | Status | Owner | Evidence |
 |---|---|---|---|---|
-| G1 | Vercel Git ผูกกับ repo เก่า ผลิตจริงถูก deploy ด้วย CLI เท่านั้น (push main ไม่ deploy) → Vercel Git ผูกกับ repo นี้ เพื่อให้ push main = deploy | decide | owner | `PRODUCT.md` §Live URL and deploy state (owner action D9) [ต้องยืนยัน: สถานะวันนี้ต้องเช็กใน Vercel] |
+| G1 | Vercel Git ผูกกับ repo เก่า ผลิตจริงถูก deploy ด้วย CLI เท่านั้น (push main ไม่ deploy) → Vercel Git ผูกกับ repo นี้ เพื่อให้ push main = deploy | done | owner | `PRODUCT.md` §Live URL and deploy state (owner action D9); Vercel API 2026-11-28: project `bookchaowalit-notes-app-frontend` Git link → `bookchaowalit-website/productivity-notes-app-web`, production branch `main` |
 | G2 | ไม่มี To-Be ของกระบวนการเขียนไว้ → owner กำหนดเป้าหมาย (ฟีเจอร์/ขอบเขตถัดไป) หรือยืนยันว่า As-Is คือเป้าหมายสุดท้าย | decide | owner | ไม่มีใน `PRODUCT.md` / `README.md` / `specs/` |
